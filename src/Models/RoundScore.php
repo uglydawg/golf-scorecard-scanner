@@ -18,6 +18,9 @@ class RoundScore extends Model
         'handicap',
     ];
 
+    /**
+     * @var array<string, string>
+     */
     protected $casts = [
         'hole_number' => 'integer',
         'score' => 'integer',
@@ -25,6 +28,9 @@ class RoundScore extends Model
         'handicap' => 'integer',
     ];
 
+    /**
+     * @return BelongsTo<Round, $this>
+     */
     public function round(): BelongsTo
     {
         return $this->belongsTo(Round::class);

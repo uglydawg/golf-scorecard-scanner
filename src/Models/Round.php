@@ -22,6 +22,9 @@ class Round extends Model
         'notes',
     ];
 
+    /**
+     * @var array<string, string>
+     */
     protected $casts = [
         'played_at' => 'date',
         'total_score' => 'integer',
@@ -29,21 +32,33 @@ class Round extends Model
         'back_nine_score' => 'integer',
     ];
 
+    /**
+     * @return BelongsTo<User, $this>
+     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
+    /**
+     * @return BelongsTo<Course, $this>
+     */
     public function course(): BelongsTo
     {
         return $this->belongsTo(Course::class);
     }
 
+    /**
+     * @return BelongsTo<ScorecardScan, $this>
+     */
     public function scorecardScan(): BelongsTo
     {
         return $this->belongsTo(ScorecardScan::class);
     }
 
+    /**
+     * @return HasMany<RoundScore, $this>
+     */
     public function scores(): HasMany
     {
         return $this->hasMany(RoundScore::class);

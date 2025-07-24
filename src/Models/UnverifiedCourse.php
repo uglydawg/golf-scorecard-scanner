@@ -21,6 +21,9 @@ class UnverifiedCourse extends Model
         'admin_notes',
     ];
 
+    /**
+     * @var array<string, string>
+     */
     protected $casts = [
         'par_values' => 'array',
         'handicap_values' => 'array',
@@ -80,6 +83,9 @@ class UnverifiedCourse extends Model
         return array_sum($this->par_values);
     }
 
+    /**
+     * @param  array<string, mixed>  $courseData
+     */
     public static function findOrCreateSimilar(array $courseData): self
     {
         $existing = self::where('name', $courseData['name'])

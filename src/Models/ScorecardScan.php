@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace ScorecardScanner\Models;
 
+use Database\Factories\ScorecardScanFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,16 +12,17 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class ScorecardScan extends Model
 {
+    /** @use HasFactory<ScorecardScanFactory> */
     use HasFactory;
 
     /**
      * Create a new factory instance for the model.
      *
-     * @return \Illuminate\Database\Eloquent\Factories\Factory
+     * @return ScorecardScanFactory
      */
     protected static function newFactory()
     {
-        return \Database\Factories\ScorecardScanFactory::new();
+        return ScorecardScanFactory::new();
     }
 
     /** @var array<int, string> */
@@ -42,11 +44,20 @@ class ScorecardScan extends Model
         'confidence_scores' => 'array',
     ];
 
+    /**
+     * @return BelongsTo<\App\Models\User, $this>
+     */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(config('auth.providers.users.model', \App\Models\User::class));
+        /** @var class-string<\App\Models\User> $userModel */
+        $userModel = config('auth.providers.users.model', \App\Models\User::class);
+
+        return $this->belongsTo($userModel);
     }
 
+    /**
+     * @return HasOne<Round, $this>
+     */
     public function round(): HasOne
     {
         return $this->hasOne(Round::class);
