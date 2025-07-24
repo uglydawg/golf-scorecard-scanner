@@ -28,12 +28,12 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
   - [x] 3.4 Update existing services to use published configuration
   - [x] 3.5 Verify all tests pass with configuration system
 
-- [ ] 4. Implement Migration Publishing
-  - [ ] 4.1 Write tests for migration publishing functionality
-  - [ ] 4.2 Move database migrations to package structure
-  - [ ] 4.3 Implement migration publishing in service provider
-  - [ ] 4.4 Create migration publishing command
-  - [ ] 4.5 Verify all tests pass with migration publishing
+- [x] 4. Implement Migration Publishing
+  - [x] 4.1 Write tests for migration publishing functionality
+  - [x] 4.2 Move database migrations to package structure
+  - [x] 4.3 Implement migration publishing in service provider
+  - [x] 4.4 Create migration publishing command
+  - [x] 4.5 Verify all tests pass with migration publishing
 
 - [ ] 5. Update Package Metadata
   - [ ] 5.1 Write tests for package installation and compatibility

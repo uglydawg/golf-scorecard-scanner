@@ -11,6 +11,7 @@ use ScorecardScanner\Services\ImageProcessingService;
 use ScorecardScanner\Services\OcrService;
 use ScorecardScanner\Models\ScorecardScan;
 use ScorecardScanner\Policies\ScorecardScanPolicy;
+use ScorecardScanner\Console\Commands\PublishMigrationsCommand;
 
 class ScorecardScannerServiceProvider extends ServiceProvider
 {
@@ -35,6 +36,18 @@ class ScorecardScannerServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/../../config/scorecard-scanner.php' => config_path('scorecard-scanner.php'),
         ], 'scorecard-scanner-config');
+
+        $this->publishes([
+            __DIR__ . '/../database/migrations' => database_path('migrations'),
+        ], 'scorecard-scanner-migrations');
+
+        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                PublishMigrationsCommand::class,
+            ]);
+        }
 
         $this->registerRoutes();
         $this->registerPolicies();
