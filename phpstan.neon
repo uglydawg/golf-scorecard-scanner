@@ -1,0 +1,14 @@
+parameters:
+    level: 6
+    paths:
+        - src
+    ignoreErrors:
+        - '#Access to an undefined property .+::\$[a-zA-Z_]+#'
+        - '#Call to an undefined static method .+::create\(\)#'
+        - '#Call to an undefined static method .+::where\(\)#'
+        - '#Method .+ never returns null so it can be removed from the return type.#'
+        - '#Cannot call method [a-zA-Z_]+ on mixed.#'
+        - '#Parameter .+ expects .+, mixed given.#'
+        - '#Binary operation .+ between .+ and mixed results in an error.#'
+        - '#Cannot access offset .+ on mixed.#'
+        - '#Cannot cast mixed to .+.#'

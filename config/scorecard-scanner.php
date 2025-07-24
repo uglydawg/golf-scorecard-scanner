@@ -45,6 +45,23 @@ return [
                 'secret_access_key' => env('AWS_SECRET_ACCESS_KEY'),
                 'timeout' => env('AWS_TEXTRACT_TIMEOUT', 30),
             ],
+
+            'openai' => [
+                'driver' => 'openai',
+                'api_key' => env('OPENAI_API_KEY'),
+                'model' => env('OPENAI_OCR_MODEL', 'gpt-4o-mini'),
+                'max_tokens' => env('OPENAI_MAX_TOKENS', 4000),
+                'timeout' => env('OPENAI_TIMEOUT', 60),
+            ],
+
+            'openrouter' => [
+                'driver' => 'openrouter',
+                'api_key' => env('OPENROUTER_API_KEY'),
+                'model' => env('OPENROUTER_OCR_MODEL', 'openai/gpt-4o-mini'),
+                'max_tokens' => env('OPENROUTER_MAX_TOKENS', 4000),
+                'timeout' => env('OPENROUTER_TIMEOUT', 60),
+                'base_url' => env('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1'),
+            ],
         ],
     ],
 

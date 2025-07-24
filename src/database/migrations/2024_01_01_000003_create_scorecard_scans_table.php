@@ -24,7 +24,7 @@ return new class extends Migration
             $table->enum('status', ['processing', 'completed', 'failed'])->default('processing');
             $table->string('error_message')->nullable();
             $table->timestamps();
-            
+
             $table->index(['user_id', 'status']);
             $table->index(['status', 'created_at']);
         });

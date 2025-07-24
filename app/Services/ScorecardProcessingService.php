@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use App\Models\ScorecardScan;
 use App\Models\Course;
+use App\Models\ScorecardScan;
 use App\Models\UnverifiedCourse;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 
 class ScorecardProcessingService
 {
@@ -24,11 +22,12 @@ class ScorecardProcessingService
 
         try {
             $this->processImage($scan);
+
             return $scan;
         } catch (\Exception $e) {
             $scan->update([
                 'status' => 'failed',
-                'error_message' => $e->getMessage()
+                'error_message' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -41,7 +40,7 @@ class ScorecardProcessingService
         return ScorecardScan::create([
             'user_id' => $userId,
             'original_image_path' => $originalPath,
-            'status' => 'processing'
+            'status' => 'processing',
         ]);
     }
 
@@ -62,7 +61,7 @@ class ScorecardProcessingService
         $scan->update([
             'parsed_data' => $parsedData,
             'confidence_scores' => $confidenceScores,
-            'status' => 'completed'
+            'status' => 'completed',
         ]);
 
         // Step 4: Handle course database population
@@ -111,7 +110,7 @@ class ScorecardProcessingService
             ->where('tee_name', $teeName)
             ->first();
 
-        if (!$existingCourse) {
+        if (! $existingCourse) {
             // Add to unverified courses or increment count
             $courseData = [
                 'name' => $courseName,
@@ -129,19 +128,19 @@ class ScorecardProcessingService
     private function extractCourseName(array $ocrData): ?string
     {
         // Mock implementation - would use pattern matching on OCR text
-        return "Pebble Beach Golf Links";
+        return 'Pebble Beach Golf Links';
     }
 
     private function extractDate(array $ocrData): ?string
     {
         // Mock implementation
-        return "2024-07-24";
+        return '2024-07-24';
     }
 
     private function extractTeeName(array $ocrData): ?string
     {
         // Mock implementation
-        return "Championship";
+        return 'Championship';
     }
 
     private function extractPlayers(array $ocrData): array
@@ -164,9 +163,10 @@ class ScorecardProcessingService
                 'scores' => [
                     'Player 1' => rand(3, 7),
                     'Player 2' => rand(3, 7),
-                ]
+                ],
             ];
         }
+
         return $holes;
     }
 
@@ -177,13 +177,13 @@ class ScorecardProcessingService
             'Player 1' => [
                 'out' => 42,
                 'in' => 41,
-                'total' => 83
+                'total' => 83,
             ],
             'Player 2' => [
                 'out' => 45,
                 'in' => 44,
-                'total' => 89
-            ]
+                'total' => 89,
+            ],
         ];
     }
 
@@ -203,6 +203,7 @@ class ScorecardProcessingService
         foreach ($parsedData['holes'] as $hole) {
             $parValues[] = $hole['par'];
         }
+
         return $parValues;
     }
 
@@ -212,6 +213,7 @@ class ScorecardProcessingService
         foreach ($parsedData['holes'] as $hole) {
             $handicapValues[] = $hole['handicap'];
         }
+
         return $handicapValues;
     }
 }

@@ -22,7 +22,7 @@ return new class extends Migration
             $table->integer('back_nine_score')->nullable();
             $table->json('hole_scores')->nullable(); // Array of 18 scores
             $table->timestamps();
-            
+
             $table->unique(['scorecard_scan_id', 'player_name']);
             $table->index(['scorecard_scan_id']);
         });

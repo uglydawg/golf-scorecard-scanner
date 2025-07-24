@@ -20,7 +20,7 @@ return new class extends Migration
             $table->integer('par');
             $table->integer('handicap');
             $table->timestamps();
-            
+
             $table->unique(['round_id', 'player_name', 'hole_number']);
             $table->index(['round_id', 'player_name']);
         });

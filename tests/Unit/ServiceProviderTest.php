@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Unit;
 
-use ScorecardScanner\Providers\ScorecardScannerServiceProvider;
-use ScorecardScanner\Services\ScorecardProcessingService;
-use ScorecardScanner\Services\ImageProcessingService;
-use ScorecardScanner\Services\OcrService;
-use ScorecardScanner\Policies\ScorecardScanPolicy;
-use ScorecardScanner\Models\ScorecardScan;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
+use ScorecardScanner\Models\ScorecardScan;
+use ScorecardScanner\Policies\ScorecardScanPolicy;
+use ScorecardScanner\Providers\ScorecardScannerServiceProvider;
+use ScorecardScanner\Services\ImageProcessingService;
+use ScorecardScanner\Services\OcrService;
+use ScorecardScanner\Services\ScorecardProcessingService;
 use Tests\TestCase;
 
 class ServiceProviderTest extends TestCase
@@ -50,7 +50,7 @@ class ServiceProviderTest extends TestCase
     public function test_service_provider_registers_routes()
     {
         $routes = Route::getRoutes();
-        
+
         // Check that scorecard-scans routes are registered
         $this->assertTrue($routes->hasNamedRoute('scorecard-scans.index'));
         $this->assertTrue($routes->hasNamedRoute('scorecard-scans.store'));
@@ -62,7 +62,7 @@ class ServiceProviderTest extends TestCase
     {
         $route = Route::getRoutes()->getByName('scorecard-scans.store');
         $action = $route->getAction();
-        
+
         $this->assertStringContainsString('ScorecardScanController', $action['controller']);
     }
 
@@ -70,7 +70,7 @@ class ServiceProviderTest extends TestCase
     {
         $route = Route::getRoutes()->getByName('scorecard-scans.store');
         $middleware = $route->middleware();
-        
+
         $this->assertContains('auth:sanctum', $middleware);
     }
 }

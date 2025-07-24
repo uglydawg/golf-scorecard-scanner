@@ -9,8 +9,9 @@
 - **Database ORM:** Eloquent with strict typing
 
 ## Database System
-- **Primary:** SQLite (development)
-- **Production Ready:** PostgreSQL/MySQL compatible
+- **Development:** SQLite (default, zero configuration)
+- **Production Support:** SQLite, PostgreSQL, MySQL (full Laravel compatibility)
+- **Migration Design:** Cross-database compatible schema definitions
 - **Queue/Cache:** Database driver (Redis recommended for production)
 
 ## JavaScript Framework
@@ -38,8 +39,11 @@
 - **Production:** Any Laravel-compatible hosting (AWS, DigitalOcean, etc.)
 
 ## Database Hosting
-- **Development:** Local SQLite
-- **Production:** Managed database services (AWS RDS, PlanetScale, etc.)
+- **Development:** Local SQLite (included in repository)
+- **Production Options:** 
+  - SQLite (simple deployments)
+  - PostgreSQL (AWS RDS, DigitalOcean, PlanetScale)
+  - MySQL (AWS RDS, DigitalOcean, shared hosting)
 
 ## Asset Hosting
 - **Local Storage:** File system with public disk

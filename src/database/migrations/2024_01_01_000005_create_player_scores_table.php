@@ -21,7 +21,7 @@ return new class extends Migration
             $table->integer('par');
             $table->integer('handicap');
             $table->timestamps();
-            
+
             $table->unique(['scorecard_player_id', 'hole_number']);
             $table->index(['scorecard_player_id']);
         });

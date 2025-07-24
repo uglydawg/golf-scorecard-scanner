@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class ScorecardScan extends Model
 {
     use HasFactory;
-    
+
     /**
      * Create a new factory instance for the model.
      *
@@ -22,7 +22,8 @@ class ScorecardScan extends Model
     {
         return \Database\Factories\ScorecardScanFactory::new();
     }
-    
+
+    /** @var array<int, string> */
     protected $fillable = [
         'user_id',
         'original_image_path',
@@ -34,6 +35,7 @@ class ScorecardScan extends Model
         'error_message',
     ];
 
+    /** @var array<string, string> */
     protected $casts = [
         'raw_ocr_data' => 'array',
         'parsed_data' => 'array',
@@ -42,7 +44,7 @@ class ScorecardScan extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(config('auth.providers.users.model', \App\Models\User::class));
     }
 
     public function round(): HasOne
@@ -65,15 +67,18 @@ class ScorecardScan extends Model
         return $this->status === 'failed';
     }
 
+    /**
+     * @return array<int, string>
+     */
     public function hasLowConfidenceFields(float $threshold = 0.85): array
     {
-        if (!$this->confidence_scores) {
+        if (! $this->confidence_scores || ! is_array($this->confidence_scores)) {
             return [];
         }
 
         return array_keys(array_filter(
             $this->confidence_scores,
-            fn($confidence) => $confidence < $threshold
+            fn ($confidence) => (float) $confidence < $threshold
         ));
     }
 }

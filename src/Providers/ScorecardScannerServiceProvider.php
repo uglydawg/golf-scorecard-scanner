@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace ScorecardScanner\Providers;
 
-use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
-use ScorecardScanner\Services\ScorecardProcessingService;
-use ScorecardScanner\Services\ImageProcessingService;
-use ScorecardScanner\Services\OcrService;
+use Illuminate\Support\ServiceProvider;
+use ScorecardScanner\Console\Commands\PublishMigrationsCommand;
 use ScorecardScanner\Models\ScorecardScan;
 use ScorecardScanner\Policies\ScorecardScanPolicy;
-use ScorecardScanner\Console\Commands\PublishMigrationsCommand;
+use ScorecardScanner\Services\ImageProcessingService;
+use ScorecardScanner\Services\OcrService;
+use ScorecardScanner\Services\ScorecardProcessingService;
 
 class ScorecardScannerServiceProvider extends ServiceProvider
 {
@@ -29,19 +29,19 @@ class ScorecardScannerServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->mergeConfigFrom(
-            __DIR__ . '/../../config/scorecard-scanner.php',
+            __DIR__.'/../../config/scorecard-scanner.php',
             'scorecard-scanner'
         );
 
         $this->publishes([
-            __DIR__ . '/../../config/scorecard-scanner.php' => config_path('scorecard-scanner.php'),
+            __DIR__.'/../../config/scorecard-scanner.php' => config_path('scorecard-scanner.php'),
         ], 'scorecard-scanner-config');
 
         $this->publishes([
-            __DIR__ . '/../database/migrations' => database_path('migrations'),
+            __DIR__.'/../database/migrations' => database_path('migrations'),
         ], 'scorecard-scanner-migrations');
 
-        $this->loadMigrationsFrom(__DIR__ . '/../database/migrations');
+        $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
 
         if ($this->app->runningInConsole()) {
             $this->commands([
@@ -59,11 +59,11 @@ class ScorecardScannerServiceProvider extends ServiceProvider
     protected function registerServices(): void
     {
         $this->app->singleton(OcrService::class, function ($app) {
-            return new OcrService();
+            return new OcrService;
         });
 
         $this->app->singleton(ImageProcessingService::class, function ($app) {
-            return new ImageProcessingService();
+            return new ImageProcessingService;
         });
 
         $this->app->singleton(ScorecardProcessingService::class, function ($app) {
@@ -79,7 +79,7 @@ class ScorecardScannerServiceProvider extends ServiceProvider
      */
     protected function registerRoutes(): void
     {
-        $this->loadRoutesFrom(__DIR__ . '/../routes/api.php');
+        $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
     }
 
     /**

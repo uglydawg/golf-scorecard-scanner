@@ -4,12 +4,10 @@ declare(strict_types=1);
 
 namespace ScorecardScanner\Services;
 
-use ScorecardScanner\Models\ScorecardScan;
-use ScorecardScanner\Models\Course;
-use ScorecardScanner\Models\UnverifiedCourse;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
+use ScorecardScanner\Models\Course;
+use ScorecardScanner\Models\ScorecardScan;
+use ScorecardScanner\Models\UnverifiedCourse;
 
 class ScorecardProcessingService
 {
@@ -24,11 +22,12 @@ class ScorecardProcessingService
 
         try {
             $this->processImage($scan);
+
             return $scan;
         } catch (\Exception $e) {
             $scan->update([
                 'status' => 'failed',
-                'error_message' => $e->getMessage()
+                'error_message' => $e->getMessage(),
             ]);
             throw $e;
         }
@@ -41,7 +40,7 @@ class ScorecardProcessingService
         return ScorecardScan::create([
             'user_id' => $userId,
             'original_image_path' => $originalPath,
-            'status' => 'processing'
+            'status' => 'processing',
         ]);
     }
 
@@ -62,13 +61,17 @@ class ScorecardProcessingService
         $scan->update([
             'parsed_data' => $parsedData,
             'confidence_scores' => $confidenceScores,
-            'status' => 'completed'
+            'status' => 'completed',
         ]);
 
         // Step 4: Handle course database population
         $this->handleCourseData($parsedData);
     }
 
+    /**
+     * @param  array<string, mixed>  $ocrData
+     * @return array<string, mixed>
+     */
     private function parseOcrData(array $ocrData): array
     {
         // This would contain the logic to parse the OCR data into structured format
@@ -85,6 +88,11 @@ class ScorecardProcessingService
         ];
     }
 
+    /**
+     * @param  array<string, mixed>  $ocrData
+     * @param  array<string, mixed>  $parsedData
+     * @return array<string, mixed>
+     */
     private function calculateConfidenceScores(array $ocrData, array $parsedData): array
     {
         // Calculate confidence scores for each parsed field
@@ -101,6 +109,9 @@ class ScorecardProcessingService
         ];
     }
 
+    /**
+     * @param  array<string, mixed>  $parsedData
+     */
     private function handleCourseData(array $parsedData): void
     {
         $courseName = $parsedData['course_name'];
@@ -111,7 +122,7 @@ class ScorecardProcessingService
             ->where('tee_name', $teeName)
             ->first();
 
-        if (!$existingCourse) {
+        if (! $existingCourse) {
             // Add to unverified courses or increment count
             $courseData = [
                 'name' => $courseName,
@@ -126,24 +137,37 @@ class ScorecardProcessingService
         }
     }
 
+    /**
+     * @param  array<string, mixed>  $ocrData
+     */
     private function extractCourseName(array $ocrData): ?string
     {
         // Mock implementation - would use pattern matching on OCR text
-        return "Pebble Beach Golf Links";
+        return 'Pebble Beach Golf Links';
     }
 
+    /**
+     * @param  array<string, mixed>  $ocrData
+     */
     private function extractDate(array $ocrData): ?string
     {
         // Mock implementation
-        return "2024-07-24";
+        return '2024-07-24';
     }
 
+    /**
+     * @param  array<string, mixed>  $ocrData
+     */
     private function extractTeeName(array $ocrData): ?string
     {
         // Mock implementation
-        return "Championship";
+        return 'Championship';
     }
 
+    /**
+     * @param  array<string, mixed>  $ocrData
+     * @return array<int, string>
+     */
     private function extractPlayers(array $ocrData): array
     {
         // Mock implementation
@@ -153,6 +177,10 @@ class ScorecardProcessingService
         ];
     }
 
+    /**
+     * @param  array<string, mixed>  $ocrData
+     * @return array<int, array<string, mixed>>
+     */
     private function extractHoleData(array $ocrData): array
     {
         // Mock implementation - would extract hole-by-hole data
@@ -164,12 +192,17 @@ class ScorecardProcessingService
                 'scores' => [
                     'Player 1' => rand(3, 7),
                     'Player 2' => rand(3, 7),
-                ]
+                ],
             ];
         }
+
         return $holes;
     }
 
+    /**
+     * @param  array<string, mixed>  $ocrData
+     * @return array<string, array<string, int>>
+     */
     private function calculateTotals(array $ocrData): array
     {
         // Mock implementation
@@ -177,41 +210,65 @@ class ScorecardProcessingService
             'Player 1' => [
                 'out' => 42,
                 'in' => 41,
-                'total' => 83
+                'total' => 83,
             ],
             'Player 2' => [
                 'out' => 45,
                 'in' => 44,
-                'total' => 89
-            ]
+                'total' => 89,
+            ],
         ];
     }
 
-    private function extractSlope(array $ocrData): ?int
+    /**
+     * @param  array<string, mixed>  $ocrData
+     */
+    private function extractSlope(array $ocrData): int
     {
         return 113;
     }
 
-    private function extractRating(array $ocrData): ?float
+    /**
+     * @param  array<string, mixed>  $ocrData
+     */
+    private function extractRating(array $ocrData): float
     {
         return 72.1;
     }
 
+    /**
+     * @param  array<string, mixed>  $parsedData
+     * @return array<int, int>
+     */
     private function extractParValues(array $parsedData): array
     {
         $parValues = [];
-        foreach ($parsedData['holes'] as $hole) {
-            $parValues[] = $hole['par'];
+        if (isset($parsedData['holes']) && is_array($parsedData['holes'])) {
+            foreach ($parsedData['holes'] as $hole) {
+                if (is_array($hole) && isset($hole['par'])) {
+                    $parValues[] = (int) $hole['par'];
+                }
+            }
         }
+
         return $parValues;
     }
 
+    /**
+     * @param  array<string, mixed>  $parsedData
+     * @return array<int, int>
+     */
     private function extractHandicapValues(array $parsedData): array
     {
         $handicapValues = [];
-        foreach ($parsedData['holes'] as $hole) {
-            $handicapValues[] = $hole['handicap'];
+        if (isset($parsedData['holes']) && is_array($parsedData['holes'])) {
+            foreach ($parsedData['holes'] as $hole) {
+                if (is_array($hole) && isset($hole['handicap'])) {
+                    $handicapValues[] = (int) $hole['handicap'];
+                }
+            }
         }
+
         return $handicapValues;
     }
 }

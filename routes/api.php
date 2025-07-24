@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-use ScorecardScanner\Http\Controllers\Api\ScorecardScanController;
+use App\Http\Controllers\Api\ScorecardScanController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 

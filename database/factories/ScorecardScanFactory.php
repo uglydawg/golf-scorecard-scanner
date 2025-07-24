@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
-use ScorecardScanner\Models\User;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
- * @extends \Illuminate\Database\Eloquent\Factories\Factory<\ScorecardScanner\Models\ScorecardScan>
+ * @extends \Illuminate\Database\Eloquent\Factories\Factory<\App\Models\ScorecardScan>
  */
 class ScorecardScanFactory extends Factory
 {
@@ -17,21 +17,21 @@ class ScorecardScanFactory extends Factory
      *
      * @var string
      */
-    protected $model = \ScorecardScanner\Models\ScorecardScan::class;
+    protected $model = \App\Models\ScorecardScan::class;
 
     public function definition(): array
     {
         return [
             'user_id' => User::factory(),
-            'original_image_path' => 'scorecard-scans/originals/' . $this->faker->uuid() . '.jpg',
-            'processed_image_path' => 'scorecard-scans/processed/' . $this->faker->uuid() . '.jpg',
+            'original_image_path' => 'scorecard-scans/originals/'.$this->faker->uuid().'.jpg',
+            'processed_image_path' => 'scorecard-scans/processed/'.$this->faker->uuid().'.jpg',
             'status' => $this->faker->randomElement(['processing', 'completed', 'failed']),
             'raw_ocr_data' => [
                 'raw_text' => $this->faker->paragraph(),
                 'confidence' => $this->faker->randomFloat(2, 0.7, 1.0),
             ],
             'parsed_data' => [
-                'course_name' => $this->faker->company() . ' Golf Course',
+                'course_name' => $this->faker->company().' Golf Course',
                 'date' => $this->faker->date(),
                 'tee_name' => $this->faker->randomElement(['Championship', 'Blue', 'White', 'Red']),
                 'players' => [$this->faker->name(), $this->faker->name()],

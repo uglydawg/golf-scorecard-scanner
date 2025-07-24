@@ -22,7 +22,7 @@ return new class extends Migration
             $table->integer('distance_yards')->nullable();
             $table->string('description')->nullable();
             $table->timestamps();
-            
+
             $table->unique(['golf_course_id', 'hole_number']);
             $table->index(['golf_course_id']);
         });

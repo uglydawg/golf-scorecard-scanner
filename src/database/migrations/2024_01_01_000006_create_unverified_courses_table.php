@@ -26,7 +26,7 @@ return new class extends Migration
             $table->enum('status', ['pending', 'approved', 'rejected'])->default('pending');
             $table->text('admin_notes')->nullable();
             $table->timestamps();
-            
+
             $table->unique(['name', 'tee_name']);
             $table->index(['status', 'submission_count']);
             $table->index('submission_count');

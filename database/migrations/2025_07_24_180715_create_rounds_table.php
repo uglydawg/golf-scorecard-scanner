@@ -23,7 +23,7 @@ return new class extends Migration
             $table->string('weather')->nullable();
             $table->text('notes')->nullable();
             $table->timestamps();
-            
+
             $table->index(['user_id', 'played_at']);
             $table->index(['course_id', 'played_at']);
         });

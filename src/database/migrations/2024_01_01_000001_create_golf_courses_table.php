@@ -24,7 +24,7 @@ return new class extends Migration
             $table->string('location')->nullable();
             $table->boolean('is_verified')->default(true);
             $table->timestamps();
-            
+
             $table->unique(['name', 'tee_name']);
             $table->index(['name', 'is_verified']);
         });

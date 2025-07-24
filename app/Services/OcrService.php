@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services;
 
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 
 class OcrService
 {
@@ -19,10 +19,10 @@ class OcrService
     public function extractText(string $imagePath): array
     {
         $fullPath = Storage::disk('public')->path($imagePath);
-        
+
         // For demonstration, using OCR.space API (free tier)
         // In production, you might use Google Vision API, AWS Textract, or Azure Computer Vision
-        
+
         if (empty($this->ocrApiKey)) {
             // Return mock data if no API key configured
             return $this->getMockOcrData();
@@ -30,8 +30,8 @@ class OcrService
 
         try {
             $response = Http::attach(
-                'file', 
-                file_get_contents($fullPath), 
+                'file',
+                file_get_contents($fullPath),
                 basename($imagePath)
             )->post($this->ocrApiUrl, [
                 'apikey' => $this->ocrApiKey,
@@ -46,15 +46,14 @@ class OcrService
                 return $this->processOcrResponse($response->json());
             }
 
-            throw new \Exception('OCR API request failed: ' . $response->body());
-            
+            throw new \Exception('OCR API request failed: '.$response->body());
         } catch (\Exception $e) {
             // Log error and return mock data for development
             \Log::error('OCR processing failed', [
                 'error' => $e->getMessage(),
-                'image_path' => $imagePath
+                'image_path' => $imagePath,
             ]);
-            
+
             return $this->getMockOcrData();
         }
     }
@@ -68,21 +67,21 @@ class OcrService
             'lines' => [],
         ];
 
-        if (isset($response['ParsedResults']) && !empty($response['ParsedResults'])) {
+        if (isset($response['ParsedResults']) && ! empty($response['ParsedResults'])) {
             $result = $response['ParsedResults'][0];
-            
+
             $processedData['raw_text'] = $result['ParsedText'] ?? '';
             $processedData['confidence'] = $result['TextOverlay']['HasOverlay'] ? 0.95 : 0.70;
-            
+
             // Process text overlay data for word-level confidence
             if (isset($result['TextOverlay']['Lines'])) {
                 foreach ($result['TextOverlay']['Lines'] as $line) {
                     $lineData = [
                         'text' => '',
                         'confidence' => 0.9,
-                        'words' => []
+                        'words' => [],
                     ];
-                    
+
                     if (isset($line['Words'])) {
                         foreach ($line['Words'] as $word) {
                             $wordData = [
@@ -90,12 +89,12 @@ class OcrService
                                 'confidence' => $this->calculateWordConfidence($word),
                                 'bbox' => $word['Left'] ?? 0,
                             ];
-                            
+
                             $lineData['words'][] = $wordData;
                             $processedData['words'][] = $wordData;
                         }
                     }
-                    
+
                     $processedData['lines'][] = $lineData;
                 }
             }
@@ -110,22 +109,22 @@ class OcrService
         $text = $word['WordText'] ?? '';
         $height = $word['Height'] ?? 10;
         $width = $word['Width'] ?? 10;
-        
+
         $confidence = 0.8; // Base confidence
-        
+
         // Adjust confidence based on text characteristics
         if (is_numeric($text)) {
             $confidence += 0.1; // Numbers are usually more reliable
         }
-        
+
         if (strlen($text) > 2) {
             $confidence += 0.05; // Longer words are more reliable
         }
-        
+
         if ($height > 15 && $width > 15) {
             $confidence += 0.05; // Larger text is more reliable
         }
-        
+
         return min($confidence, 1.0);
     }
 
@@ -150,10 +149,10 @@ class OcrService
                         ['text' => 'BEACH', 'confidence' => 0.93],
                         ['text' => 'GOLF', 'confidence' => 0.94],
                         ['text' => 'LINKS', 'confidence' => 0.91],
-                    ]
+                    ],
                 ],
                 // ... more lines would be here
-            ]
+            ],
         ];
     }
 }

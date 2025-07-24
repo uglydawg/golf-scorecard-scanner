@@ -2,7 +2,7 @@
 
 ## 🎯 Project Overview
 
-I've successfully created a comprehensive Golf Scorecard Scanner application based on the provided PRD. This Laravel-based API allows users to upload scorecard images and automatically extract golf data using OCR technology.
+Create a comprehensive Golf Scorecard Scanner application based on the provided PRD. This Laravel-based API allows users to upload scorecard images and automatically extract golf data using OCR technology.
 
 ## ✅ Completed Implementation
 
@@ -44,6 +44,11 @@ DELETE /api/scorecard-scans/{id} - Delete scan
 
 ## 🏗️ Technical Architecture
 
+### Database Support
+- **Development**: SQLite (default, no setup required)
+- **Production**: SQLite, PostgreSQL, MySQL (Laravel multi-database compatible)
+- **Schema Compatibility**: All migrations designed for cross-database compatibility
+
 ### Database Schema
 ```sql
 courses: id, name, tee_name, par_values[], handicap_values[], slope, rating
@@ -54,12 +59,17 @@ unverified_courses: id, name, tee_name, submission_count, status
 ```
 
 ### Processing Pipeline
-1. **Image Upload** → Validation & Storage
+1. **Image Upload** → Validation & Storage (uses host app's `FILESYSTEM_DISK` config)
 2. **Preprocessing** → Grayscale, contrast, perspective correction
 3. **OCR Extraction** → Text extraction with confidence scoring
 4. **Data Parsing** → Structured golf data extraction
 5. **Course Matching** → Database lookup or crowdsourced submission
 6. **Response** → JSON with confidence indicators
+
+### File Storage Architecture
+- **Configuration Dependency**: Package inherits storage configuration from host Laravel application
+- **Environment Variable**: Respects host app's `FILESYSTEM_DISK` setting (local, s3, etc.)
+- **No Storage Conflicts**: Works seamlessly with existing application file management
 
 ## 📊 PRD Requirements Coverage
 
@@ -112,6 +122,11 @@ The implementation provides data collection points for all PRD success metrics:
 - **File Management**: Automatic cleanup and storage optimization
 - **Database Optimization**: Proper indexing and relationship design
 - **Caching Strategy**: Ready for Redis/Memcached integration
+
+### File Storage Configuration
+- **Host Application Dependency**: Package relies on host application's `FILESYSTEM_DISK` environment configuration
+- **Storage Flexibility**: Works with any Laravel filesystem disk (local, s3, etc.) configured by the host application
+- **No Additional Setup**: Package uses the existing filesystem configuration without requiring separate storage setup
 
 ### Security Implementation
 - **Input Validation**: Comprehensive file and data validation

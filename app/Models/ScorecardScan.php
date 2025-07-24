@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 class ScorecardScan extends Model
 {
     use HasFactory;
+
     protected $fillable = [
         'user_id',
         'original_image_path',
@@ -56,13 +57,13 @@ class ScorecardScan extends Model
 
     public function hasLowConfidenceFields(float $threshold = 0.85): array
     {
-        if (!$this->confidence_scores) {
+        if (! $this->confidence_scores) {
             return [];
         }
 
         return array_keys(array_filter(
             $this->confidence_scores,
-            fn($confidence) => $confidence < $threshold
+            fn ($confidence) => $confidence < $threshold
         ));
     }
 }

@@ -52,7 +52,7 @@ class UnverifiedCourse extends Model
         return $course;
     }
 
-    public function reject(string $reason = null): void
+    public function reject(?string $reason = null): void
     {
         $this->update([
             'status' => 'rejected',
@@ -87,10 +87,11 @@ class UnverifiedCourse extends Model
             ->where('status', 'pending')
             ->first();
 
-        if ($existing && 
-            $existing->par_values === $courseData['par_values'] && 
+        if ($existing &&
+            $existing->par_values === $courseData['par_values'] &&
             $existing->handicap_values === $courseData['handicap_values']) {
             $existing->incrementSubmissionCount();
+
             return $existing;
         }
 

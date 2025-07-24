@@ -28,13 +28,13 @@ class ScorecardScanController extends Controller
 
             return response()->json([
                 'message' => 'Scorecard uploaded and processing started',
-                'data' => new ScorecardScanResource($scan)
+                'data' => new ScorecardScanResource($scan),
             ], Response::HTTP_CREATED);
 
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to process scorecard image',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], Response::HTTP_UNPROCESSABLE_ENTITY);
         }
     }
@@ -44,7 +44,7 @@ class ScorecardScanController extends Controller
         $this->authorize('view', $scan);
 
         return response()->json([
-            'data' => new ScorecardScanResource($scan)
+            'data' => new ScorecardScanResource($scan),
         ]);
     }
 
@@ -62,7 +62,7 @@ class ScorecardScanController extends Controller
                 'last_page' => $scans->lastPage(),
                 'per_page' => $scans->perPage(),
                 'total' => $scans->total(),
-            ]
+            ],
         ]);
     }
 
@@ -74,7 +74,7 @@ class ScorecardScanController extends Controller
         if ($scan->original_image_path) {
             \Storage::disk('public')->delete($scan->original_image_path);
         }
-        
+
         if ($scan->processed_image_path) {
             \Storage::disk('public')->delete($scan->processed_image_path);
         }
@@ -82,7 +82,7 @@ class ScorecardScanController extends Controller
         $scan->delete();
 
         return response()->json([
-            'message' => 'Scorecard scan deleted successfully'
+            'message' => 'Scorecard scan deleted successfully',
         ]);
     }
 }

@@ -2,115 +2,99 @@
 
 declare(strict_types=1);
 
-namespace Tests\Feature;
-
-use ScorecardScanner\Models\ScorecardScan;
-use ScorecardScanner\Models\User;
-use Illuminate\Foundation\Testing\WithFaker;
+use App\Models\ScorecardScan;
+use App\Models\User;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
-use Tests\TestCase;
 
-class ScorecardScanTest extends TestCase
-{
-    use WithFaker;
+beforeEach(function () {
+    Artisan::call('migrate:fresh');
+    DB::beginTransaction();
+    Storage::fake('public');
+});
 
-    protected function setUp(): void
-    {
-        parent::setUp();
-        DB::beginTransaction();
-        Storage::fake('public');
-    }
+afterEach(function () {
+    DB::rollBack();
+});
 
-    protected function tearDown(): void
-    {
-        DB::rollBack();
-        parent::tearDown();
-    }
+it('allows authenticated user to upload scorecard image', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
 
-    public function test_authenticated_user_can_upload_scorecard_image(): void
-    {
-        $user = User::factory()->create();
-        Sanctum::actingAs($user);
+    $file = UploadedFile::fake()->image('scorecard.jpg', 800, 600);
 
-        $file = UploadedFile::fake()->image('scorecard.jpg', 800, 600);
+    $response = $this->postJson('/api/scorecard-scans', [
+        'image' => $file,
+    ]);
 
-        $response = $this->postJson('/api/scorecard-scans', [
-            'image' => $file
+    $response->assertStatus(201)
+        ->assertJsonStructure([
+            'message',
+            'data' => [
+                'id',
+                'status',
+                'original_image_url',
+                'created_at',
+            ],
         ]);
 
-        $response->assertStatus(201)
-            ->assertJsonStructure([
-                'message',
-                'data' => [
-                    'id',
-                    'status',
-                    'original_image_url',
-                    'created_at'
-                ]
-            ]);
+    $this->assertDatabaseHas('scorecard_scans', [
+        'user_id' => $user->id,
+        'status' => 'completed',
+    ]);
+});
 
-        $this->assertDatabaseHas('scorecard_scans', [
-            'user_id' => $user->id,
-            'status' => 'completed' // Our mock service completes immediately
+it('prevents unauthenticated user from uploading scorecard', function () {
+    $file = UploadedFile::fake()->image('scorecard.jpg');
+
+    $response = $this->postJson('/api/scorecard-scans', [
+        'image' => $file,
+    ]);
+
+    $response->assertStatus(401);
+});
+
+it('fails validation for invalid file upload', function () {
+    $user = User::factory()->create();
+    Sanctum::actingAs($user);
+
+    $response = $this->postJson('/api/scorecard-scans', [
+        'image' => 'not-a-file',
+    ]);
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['image']);
+});
+
+it('allows user to view their own scorecard scan', function () {
+    $user = User::factory()->create();
+    $scan = ScorecardScan::factory()->create(['user_id' => $user->id]);
+
+    Sanctum::actingAs($user);
+
+    $response = $this->getJson("/api/scorecard-scans/{$scan->id}");
+
+    $response->assertStatus(200)
+        ->assertJsonStructure([
+            'data' => [
+                'id',
+                'status',
+                'created_at',
+            ],
         ]);
-    }
+});
 
-    public function test_unauthenticated_user_cannot_upload_scorecard(): void
-    {
-        $file = UploadedFile::fake()->image('scorecard.jpg');
+it('prevents user from viewing other users scorecard scan', function () {
+    $user = User::factory()->create();
+    $otherUser = User::factory()->create();
+    $scan = ScorecardScan::factory()->create(['user_id' => $otherUser->id]);
 
-        $response = $this->postJson('/api/scorecard-scans', [
-            'image' => $file
-        ]);
+    Sanctum::actingAs($user);
 
-        $response->assertStatus(401);
-    }
+    $response = $this->getJson("/api/scorecard-scans/{$scan->id}");
 
-    public function test_invalid_file_upload_fails_validation(): void
-    {
-        $user = User::factory()->create();
-        Sanctum::actingAs($user);
-
-        $response = $this->postJson('/api/scorecard-scans', [
-            'image' => 'not-a-file'
-        ]);
-
-        $response->assertStatus(422)
-            ->assertJsonValidationErrors(['image']);
-    }
-
-    public function test_user_can_view_their_own_scorecard_scan(): void
-    {
-        $user = User::factory()->create();
-        $scan = ScorecardScan::factory()->create(['user_id' => $user->id]);
-        
-        Sanctum::actingAs($user);
-
-        $response = $this->getJson("/api/scorecard-scans/{$scan->id}");
-
-        $response->assertStatus(200)
-            ->assertJsonStructure([
-                'data' => [
-                    'id',
-                    'status',
-                    'created_at'
-                ]
-            ]);
-    }
-
-    public function test_user_cannot_view_other_users_scorecard_scan(): void
-    {
-        $user = User::factory()->create();
-        $otherUser = User::factory()->create();
-        $scan = ScorecardScan::factory()->create(['user_id' => $otherUser->id]);
-        
-        Sanctum::actingAs($user);
-
-        $response = $this->getJson("/api/scorecard-scans/{$scan->id}");
-
-        $response->assertStatus(403);
-    }
-}
+    $response->assertStatus(403);
+});

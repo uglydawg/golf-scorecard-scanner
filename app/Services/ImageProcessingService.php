@@ -12,14 +12,14 @@ class ImageProcessingService
     public function preprocessImage(string $originalImagePath): string
     {
         $image = Image::read(Storage::disk('public')->path($originalImagePath));
-        
+
         // Apply image preprocessing steps
         $processedImage = $this->applyPreprocessing($image);
-        
+
         // Save processed image
         $processedPath = str_replace('/originals/', '/processed/', $originalImagePath);
         Storage::disk('public')->put($processedPath, $processedImage->encode());
-        
+
         return $processedPath;
     }
 
@@ -27,20 +27,20 @@ class ImageProcessingService
     {
         // 1. Convert to grayscale for better OCR
         $image = $image->greyscale();
-        
+
         // 2. Increase contrast
         $image = $image->contrast(20);
-        
+
         // 3. Apply sharpening
         $image = $image->sharpen(10);
-        
+
         // 4. Resize if too large (max 2000px width)
         if ($image->width() > 2000) {
             $image = $image->resize(2000, null, function ($constraint) {
                 $constraint->aspectRatio();
             });
         }
-        
+
         return $image;
     }
 
