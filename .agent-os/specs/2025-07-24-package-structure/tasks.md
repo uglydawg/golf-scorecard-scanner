@@ -14,12 +14,12 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
   - [x] 1.4 Update composer.json autoload configuration
   - [x] 1.5 Verify all tests pass with new structure
 
-- [ ] 2. Implement Service Provider
-  - [ ] 2.1 Write tests for service provider functionality
-  - [ ] 2.2 Create ScorecardScannerServiceProvider class
-  - [ ] 2.3 Register routes, services, and policies in provider
-  - [ ] 2.4 Add auto-discovery configuration to composer.json
-  - [ ] 2.5 Verify all tests pass with service provider
+- [x] 2. Implement Service Provider
+  - [x] 2.1 Write tests for service provider functionality
+  - [x] 2.2 Create ScorecardScannerServiceProvider class
+  - [x] 2.3 Register routes, services, and policies in provider
+  - [x] 2.4 Add auto-discovery configuration to composer.json
+  - [x] 2.5 Verify all tests pass with service provider
 
 - [ ] 3. Create Configuration Publishing
   - [ ] 3.1 Write tests for configuration publishing
