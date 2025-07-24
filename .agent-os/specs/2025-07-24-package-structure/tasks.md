@@ -21,12 +21,12 @@ These are the tasks to be completed for the spec detailed in @.agent-os/specs/20
   - [x] 2.4 Add auto-discovery configuration to composer.json
   - [x] 2.5 Verify all tests pass with service provider
 
-- [ ] 3. Create Configuration Publishing
-  - [ ] 3.1 Write tests for configuration publishing
-  - [ ] 3.2 Create publishable config/scorecard-scanner.php file
-  - [ ] 3.3 Implement configuration publishing in service provider
-  - [ ] 3.4 Update existing services to use published configuration
-  - [ ] 3.5 Verify all tests pass with configuration system
+- [x] 3. Create Configuration Publishing
+  - [x] 3.1 Write tests for configuration publishing
+  - [x] 3.2 Create publishable config/scorecard-scanner.php file
+  - [x] 3.3 Implement configuration publishing in service provider
+  - [x] 3.4 Update existing services to use published configuration
+  - [x] 3.5 Verify all tests pass with configuration system
 
 - [ ] 4. Implement Migration Publishing
   - [ ] 4.1 Write tests for migration publishing functionality

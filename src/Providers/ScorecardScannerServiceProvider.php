@@ -27,6 +27,15 @@ class ScorecardScannerServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        $this->mergeConfigFrom(
+            __DIR__ . '/../../config/scorecard-scanner.php',
+            'scorecard-scanner'
+        );
+
+        $this->publishes([
+            __DIR__ . '/../../config/scorecard-scanner.php' => config_path('scorecard-scanner.php'),
+        ], 'scorecard-scanner-config');
+
         $this->registerRoutes();
         $this->registerPolicies();
     }

@@ -9,38 +9,49 @@ use Illuminate\Support\Facades\Http;
 
 class OcrService
 {
-    public function __construct(
-        private string $ocrApiKey = '',
-        private string $ocrApiUrl = 'https://api.ocr.space/parse/image'
-    ) {
-        $this->ocrApiKey = config('services.ocr.api_key', '');
+    private string $currentProvider;
+    private array $providerConfig;
+
+    public function __construct()
+    {
+        $this->currentProvider = config('scorecard-scanner.ocr.default', 'mock');
+        $this->providerConfig = config('scorecard-scanner.ocr.providers.' . $this->currentProvider, []);
     }
 
     public function extractText(string $imagePath): array
     {
-        $fullPath = Storage::disk('public')->path($imagePath);
+        $storageDisk = config('scorecard-scanner.storage.disk', 'local');
+        $fullPath = Storage::disk($storageDisk)->path($imagePath);
         
-        // For demonstration, using OCR.space API (free tier)
-        // In production, you might use Google Vision API, AWS Textract, or Azure Computer Vision
+        return match ($this->currentProvider) {
+            'mock' => $this->getMockOcrData(),
+            'ocrspace' => $this->processWithOcrSpace($fullPath, $imagePath),
+            'google' => $this->processWithGoogleVision($fullPath, $imagePath),
+            'aws' => $this->processWithAwsTextract($fullPath, $imagePath),
+            default => $this->getMockOcrData(),
+        };
+    }
+
+    private function processWithOcrSpace(string $fullPath, string $imagePath): array
+    {
+        $apiKey = $this->providerConfig['api_key'] ?? '';
+        $apiUrl = $this->providerConfig['base_url'] ?? 'https://api.ocr.space/parse/image';
         
-        if (empty($this->ocrApiKey)) {
-            // Return mock data if no API key configured
+        if (empty($apiKey)) {
             return $this->getMockOcrData();
         }
 
         try {
-            $response = Http::attach(
-                'file', 
-                file_get_contents($fullPath), 
-                basename($imagePath)
-            )->post($this->ocrApiUrl, [
-                'apikey' => $this->ocrApiKey,
-                'language' => 'eng',
-                'isOverlayRequired' => true,
-                'detectOrientation' => true,
-                'scale' => true,
-                'isTable' => true,
-            ]);
+            $response = Http::timeout($this->providerConfig['timeout'] ?? 30)
+                ->attach('file', file_get_contents($fullPath), basename($imagePath))
+                ->post($apiUrl, [
+                    'apikey' => $apiKey,
+                    'language' => $this->providerConfig['language'] ?? 'eng',
+                    'isOverlayRequired' => true,
+                    'detectOrientation' => true,
+                    'scale' => true,
+                    'isTable' => true,
+                ]);
 
             if ($response->successful()) {
                 return $this->processOcrResponse($response->json());
@@ -49,14 +60,28 @@ class OcrService
             throw new \Exception('OCR API request failed: ' . $response->body());
             
         } catch (\Exception $e) {
-            // Log error and return mock data for development
             \Log::error('OCR processing failed', [
+                'provider' => 'ocrspace',
                 'error' => $e->getMessage(),
                 'image_path' => $imagePath
             ]);
             
             return $this->getMockOcrData();
         }
+    }
+
+    private function processWithGoogleVision(string $fullPath, string $imagePath): array
+    {
+        // Placeholder for Google Vision API integration
+        \Log::info('Google Vision API not yet implemented, using mock data');
+        return $this->getMockOcrData();
+    }
+
+    private function processWithAwsTextract(string $fullPath, string $imagePath): array
+    {
+        // Placeholder for AWS Textract integration
+        \Log::info('AWS Textract not yet implemented, using mock data');
+        return $this->getMockOcrData();
     }
 
     private function processOcrResponse(array $response): array
@@ -111,7 +136,8 @@ class OcrService
         $height = $word['Height'] ?? 10;
         $width = $word['Width'] ?? 10;
         
-        $confidence = 0.8; // Base confidence
+        $baseConfidence = $this->providerConfig['confidence'] ?? 0.8;
+        $confidence = $baseConfidence;
         
         // Adjust confidence based on text characteristics
         if (is_numeric($text)) {
@@ -131,9 +157,11 @@ class OcrService
 
     private function getMockOcrData(): array
     {
+        $mockConfidence = $this->providerConfig['confidence'] ?? 0.95;
+        
         return [
             'raw_text' => "PEBBLE BEACH GOLF LINKS\nChampionship Tees\nDate: 07/24/2024\nPlayer 1: John Doe\nPlayer 2: Jane Smith\nHole  Par  Hdcp  P1  P2\n1     4    10    4   5\n2     4    16    5   4\n3     4    4     3   4\n4     4    2     4   5\n5     3    14    3   2\n6     5    12    6   5\n7     3    8     4   3\n8     4    18    4   4\n9     4    6     5   4\nOUT   35         38  36\n10    4    11    4   4\n11    4    15    5   5\n12    3    17    3   3\n13    4    1     4   5\n14    5    3     5   6\n15    4    13    4   4\n16    4    9     3   4\n17    3    7     3   2\n18    4    5     4   4\nIN    35         35  37\nTOTAL 70         73  73\nSlope: 113  Rating: 72.1",
-            'confidence' => 0.92,
+            'confidence' => $mockConfidence,
             'words' => [
                 ['text' => 'PEBBLE', 'confidence' => 0.95, 'bbox' => 100],
                 ['text' => 'BEACH', 'confidence' => 0.93, 'bbox' => 150],

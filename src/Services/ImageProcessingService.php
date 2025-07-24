@@ -11,20 +11,26 @@ class ImageProcessingService
 {
     public function preprocessImage(string $originalImagePath): string
     {
-        $image = Image::read(Storage::disk('public')->path($originalImagePath));
+        $storageDisk = config('scorecard-scanner.storage.disk', 'local');
+        $image = Image::read(Storage::disk($storageDisk)->path($originalImagePath));
         
         // Apply image preprocessing steps
         $processedImage = $this->applyPreprocessing($image);
         
         // Save processed image
+        $storageDisk = config('scorecard-scanner.storage.disk', 'local');
         $processedPath = str_replace('/originals/', '/processed/', $originalImagePath);
-        Storage::disk('public')->put($processedPath, $processedImage->encode());
+        Storage::disk($storageDisk)->put($processedPath, $processedImage->encode());
         
         return $processedPath;
     }
 
     private function applyPreprocessing($image)
     {
+        $quality = config('scorecard-scanner.processing.image_quality', 85);
+        $maxWidth = config('scorecard-scanner.processing.max_width', 2048);
+        $maxHeight = config('scorecard-scanner.processing.max_height', 2048);
+        
         // 1. Convert to grayscale for better OCR
         $image = $image->greyscale();
         
@@ -34,10 +40,11 @@ class ImageProcessingService
         // 3. Apply sharpening
         $image = $image->sharpen(10);
         
-        // 4. Resize if too large (max 2000px width)
-        if ($image->width() > 2000) {
-            $image = $image->resize(2000, null, function ($constraint) {
+        // 4. Resize if too large
+        if ($image->width() > $maxWidth || $image->height() > $maxHeight) {
+            $image = $image->resize($maxWidth, $maxHeight, function ($constraint) {
                 $constraint->aspectRatio();
+                $constraint->upsize();
             });
         }
         
