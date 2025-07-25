@@ -14,11 +14,22 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
  */
 class User extends Authenticatable
 {
-    public int $id;
+    protected $fillable = [
+        'name',
+        'email',
+        'email_verified_at',
+        'password',
+    ];
 
-    public string $name;
+    protected $hidden = [
+        'password',
+        'remember_token',
+    ];
 
-    public string $email;
+    protected $casts = [
+        'email_verified_at' => 'timestamp',
+        'password' => 'hashed',
+    ];
 
     /**
      * @return HasMany<ScorecardScan, $this>

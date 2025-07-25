@@ -15,10 +15,16 @@ class OcrService
     /** @var array<string, mixed> */
     private array $providerConfig;
 
-    public function __construct()
+    private bool $useEnhancedPrompt;
+
+    private ?TrainingDataService $trainingDataService;
+
+    public function __construct(?TrainingDataService $trainingDataService = null)
     {
         $this->currentProvider = config('scorecard-scanner.ocr.default', 'mock');
         $this->providerConfig = config('scorecard-scanner.ocr.providers.'.$this->currentProvider, []);
+        $this->useEnhancedPrompt = config('scorecard-scanner.ocr.enhanced_prompt_enabled', false);
+        $this->trainingDataService = $trainingDataService;
     }
 
     /**
@@ -29,7 +35,9 @@ class OcrService
         $storageDisk = config('scorecard-scanner.storage.disk', 'local');
         $fullPath = Storage::disk($storageDisk)->path($imagePath);
 
-        return match ($this->currentProvider) {
+        $startTime = microtime(true);
+
+        $result = match ($this->currentProvider) {
             'mock' => $this->getMockOcrData(),
             'ocrspace' => $this->processWithOcrSpace($fullPath, $imagePath),
             'google' => $this->processWithGoogleVision($fullPath, $imagePath),
@@ -38,6 +46,14 @@ class OcrService
             'openrouter' => $this->processWithOpenRouter($fullPath, $imagePath),
             default => $this->getMockOcrData(),
         };
+
+        // Add processing metadata
+        $processingTime = (microtime(true) - $startTime) * 1000;
+        $result['processing_time_ms'] = (int) $processingTime;
+        $result['provider'] = $this->currentProvider;
+        $result['enhanced_format'] = $this->useEnhancedPrompt;
+
+        return $result;
     }
 
     /**
@@ -129,7 +145,9 @@ class OcrService
                             'content' => [
                                 [
                                     'type' => 'text',
-                                    'text' => $this->getGolfScorecardExtractionPrompt(),
+                                    'text' => $this->useEnhancedPrompt
+                                        ? $this->getEnhancedGolfScorecardExtractionPrompt()
+                                        : $this->getGolfScorecardExtractionPrompt(),
                                 ],
                                 [
                                     'type' => 'image_url',
@@ -148,7 +166,9 @@ class OcrService
                 $result = $response->json();
                 $content = $result['choices'][0]['message']['content'] ?? '';
 
-                return $this->processOpenAIResponse($content, $imagePath);
+                return $this->useEnhancedPrompt
+                    ? $this->processEnhancedOpenAIResponse($content, $imagePath)
+                    : $this->processOpenAIResponse($content, $imagePath);
             }
 
             throw new \Exception('OpenAI API request failed: '.$response->body());
@@ -206,7 +226,9 @@ class OcrService
                             'content' => [
                                 [
                                     'type' => 'text',
-                                    'text' => $this->getGolfScorecardExtractionPrompt(),
+                                    'text' => $this->useEnhancedPrompt
+                                        ? $this->getEnhancedGolfScorecardExtractionPrompt()
+                                        : $this->getGolfScorecardExtractionPrompt(),
                                 ],
                                 [
                                     'type' => 'image_url',
@@ -225,7 +247,9 @@ class OcrService
                 $result = $response->json();
                 $content = $result['choices'][0]['message']['content'] ?? '';
 
-                return $this->processOpenAIResponse($content, $imagePath);
+                return $this->useEnhancedPrompt
+                    ? $this->processEnhancedOpenAIResponse($content, $imagePath)
+                    : $this->processOpenAIResponse($content, $imagePath);
             }
 
             throw new \Exception('OpenRouter API request failed: '.$response->body());
@@ -547,94 +571,621 @@ class OcrService
 
     private function getGolfScorecardExtractionPrompt(): string
     {
-        return 'This is a golf scorecard image. Extract ALL information and format as structured JSON:
+        return 'You are a specialized golf scorecard OCR system. Extract ALL information from this golf scorecard image and format as structured JSON. This data will populate a golf course database that stores course information, round data, and individual hole scores.
 
+REQUIRED JSON OUTPUT FORMAT:
 {
-  "course_name": "Full name of the golf course",
-  "course_location": "City, State, Country or address if visible",
-  "date": "Date of play if visible (format: YYYY-MM-DD or MM/DD/YYYY)",
-  "tee_name": "Tee box name (e.g., Championship, Blue, White, Red, Gold)",
-  "tee_colors": ["Colors of tee boxes if multiple shown"],
-  "course_rating": "Course rating number (e.g., 72.1)",
-  "slope_rating": "Slope rating number (e.g., 113)",
-  "total_par": "Total par for the course (usually 70-72)",
-  "total_yardage": "Total yardage for the course",
-  "players": ["List of all player names"],
-  "holes": [
+  "course_name": "Full official name of the golf course",
+  "course_location": "City, State/Province, Country (or full address if visible)",
+  "date": "Date of play in YYYY-MM-DD format if visible",
+  "tee_name": "Specific tee designation (e.g., Championship, Blue, White, Red, Gold, Black, Tips)",
+  "course_rating": 72.1,
+  "slope_rating": 113,
+  "par_values": [4, 3, 5, 4, 4, 3, 4, 5, 4, 4, 3, 5, 4, 4, 3, 4, 5, 4],
+  "handicap_values": [10, 18, 2, 14, 6, 16, 8, 4, 12, 1, 17, 3, 13, 7, 15, 9, 5, 11],
+  "yardages": [350, 155, 520, 380, 410, 165, 425, 545, 390, 420, 180, 565, 375, 445, 170, 400, 510, 385],
+  "total_par": 72,
+  "total_yardage": 6600,
+  "players": ["Player Name 1", "Player Name 2", "Player Name 3", "Player Name 4"],
+  "player_scores": {
+    "Player Name 1": {
+      "hole_scores": [4, 3, 5, 4, 5, 3, 4, 6, 4, 4, 2, 5, 4, 4, 3, 4, 5, 4],
+      "front_nine_score": 38,
+      "back_nine_score": 35,
+      "total_score": 73
+    },
+    "Player Name 2": {
+      "hole_scores": [5, 4, 6, 4, 4, 3, 5, 5, 4, 3, 3, 4, 5, 4, 3, 4, 6, 4],
+      "front_nine_score": 40,
+      "back_nine_score": 36,
+      "total_score": 76
+    }
+  },
+  "weather": "Weather conditions if noted on scorecard",
+  "additional_notes": "Any special notes, tournament info, or course conditions"
+}
+
+CRITICAL EXTRACTION PRIORITIES:
+
+1. COURSE IDENTIFICATION (MANDATORY):
+   - Course name: Look for large prominent text, usually at the top
+   - Location: City, state, country, or full address
+   - Tee designation: Look for tee names, colors, or markers (Men\'s/Women\'s, Championship, etc.)
+
+2. HOLE-BY-HOLE DATA (ABSOLUTELY CRITICAL):
+   - par_values: Array of exactly 18 integers (3, 4, or 5) - holes 1-18 in order
+   - handicap_values: Array of exactly 18 integers (1-18) showing difficulty ranking
+   - yardages: Array of exactly 18 integers showing distance for the specific tee
+   - Ensure arrays are in hole order 1, 2, 3... 18 (not front nine then back nine)
+
+3. COURSE RATINGS (ESSENTIAL FOR DATABASE):
+   - course_rating: Decimal number (typically 67.0-77.0) - difficulty for scratch golfer
+   - slope_rating: Integer (55-155, typically 90-140) - relative difficulty measure
+   - total_par: Sum of all par values (typically 70-72)
+   - total_yardage: Sum of all hole yardages
+
+4. PLAYER SCORING DATA:
+   - Extract all player names from scorecard header
+   - Individual hole scores for each player (18 integers per player)
+   - Calculate front nine (holes 1-9) and back nine (holes 10-18) subtotals
+   - Calculate total score for each player
+
+5. METADATA:
+   - Date of play if visible
+   - Weather conditions if noted
+   - Tournament or event information
+   - Any special rules or notes
+
+VALIDATION REQUIREMENTS:
+- par_values must contain exactly 18 integers between 3-5
+- handicap_values must contain exactly 18 unique integers from 1-18
+- yardages must contain exactly 18 positive integers
+- total_par must equal sum of par_values
+- Player scores must be reasonable (typically 60-120 per round)
+- Course rating typically ranges 67.0-77.0
+- Slope rating must be 55-155
+
+COMMON SCORECARD LAYOUTS:
+- Front nine (holes 1-9) often on left side or top half
+- Back nine (holes 10-18) often on right side or bottom half  
+- Multiple tee yardages may be shown in columns
+- Par and handicap usually in dedicated rows
+- Player scores in grid format with totals
+
+Extract every number with extreme accuracy. Golf handicap calculations depend on precise par values, handicap rankings, and course ratings. If any required data is unclear or missing, note it in additional_notes but still provide your best interpretation of visible information.';
+    }
+
+    private function getEnhancedGolfScorecardExtractionPrompt(): string
     {
-      "number": 1,
-      "par": 4,
-      "handicap": 10,
-      "yardage": 350,
-      "front_nine": true,
-      "scores": [4, 5]
+        return 'You are a specialized golf scorecard OCR system with advanced AI capabilities. Extract comprehensive golf course data from this scorecard image and return it as structured JSON matching the exact schema below. This data will populate a professional golf course database with 95%+ accuracy requirements.
+
+ENHANCED JSON SCHEMA (MANDATORY FORMAT):
+{
+  "course_information": {
+    "course_name": "Full official name of the golf course",
+    "location": {
+      "address": "Street address if visible",
+      "city": "City name", 
+      "state": "State/Province",
+      "country": "Country code (US, CA, etc.)",
+      "postal_code": "ZIP/postal code if visible"
+    },
+    "architect": "Course architect/designer name if mentioned",
+    "established_year": 1925,
+    "phone": "Phone number if visible",
+    "website": "Website URL if visible",
+    "description": "Any course description or tagline",
+    "confidence": 0.95
+  },
+  "tee_boxes": [
+    {
+      "tee_name": "Championship",
+      "tee_color": "Black",
+      "gender": "Men",
+      "par_values": [4, 3, 5, 4, 4, 3, 4, 5, 4, 4, 3, 5, 4, 4, 3, 4, 5, 4],
+      "handicap_values": [1, 17, 3, 13, 7, 15, 9, 5, 11, 2, 18, 4, 14, 6, 16, 8, 10, 12],
+      "yardages": [420, 155, 545, 385, 410, 165, 425, 520, 395, 440, 180, 565, 375, 445, 170, 400, 510, 385],
+      "course_rating": 72.8,
+      "slope_rating": 142,
+      "total_par": 72,
+      "total_yardage": 6935,
+      "confidence": 0.92
     }
   ],
-  "front_nine": {
-    "par": 36,
-    "yardage": 3200,
-    "scores": [38, 36]
-  },
-  "back_nine": {
-    "par": 36,
-    "yardage": 3400,
-    "scores": [35, 37]
-  },
-  "totals": {
-    "par": 72,
-    "yardage": 6600,
-    "scores": [73, 73]
-  },
-  "additional_info": {
-    "tournament_name": "Tournament or event name if visible",
-    "weather": "Weather conditions if noted",
-    "designer": "Course designer if mentioned",
-    "established": "Year established if shown",
-    "phone": "Phone number if visible",
-    "website": "Website if visible",
-    "scorecard_type": "Type of scorecard (e.g., daily fee, private, resort)"
+  "player_scores": [
+    {
+      "player_name": "John Doe",
+      "hole_scores": [4, 3, 6, 5, 4, 3, 4, 6, 4, 4, 2, 5, 4, 4, 3, 4, 5, 4],
+      "front_nine_total": 39,
+      "back_nine_total": 35,
+      "total_score": 74,
+      "confidence": 0.88
+    }
+  ],
+  "round_metadata": {
+    "date_played": "2024-07-24",
+    "weather_conditions": "Clear, 75°F, Light Wind",
+    "tournament_name": "Club Championship",
+    "notes": "Any special notes or conditions"
   }
 }
 
 CRITICAL EXTRACTION REQUIREMENTS:
-1. COURSE IDENTIFICATION:
-   - Look for large text at top (course name)
-   - Search for city/state/address information
-   - Identify tee box names (Championship, Blue, White, etc.)
-   - Find course designer or architect credits
 
-2. TEE INFORMATION:
-   - Identify different tee boxes by color/name
-   - Extract yardages for each tee (may have multiple columns)
-   - Find course rating and slope for the specific tee
-   - Look for total yardage at bottom
+1. COURSE INFORMATION (MANDATORY):
+   - Extract complete course identification with high confidence
+   - Include architect and establishment year if visible
+   - Parse location into structured components (city, state, country)
+   - Capture contact information (phone, website) if present
 
-3. HOLE DATA (CRITICAL):
-   - Extract hole numbers 1-18
-   - Par values for each hole (3, 4, or 5)
-   - Handicap rankings (1-18, difficulty order)
-   - Yardages from the scorecard tee
-   - Distinguish front 9 (holes 1-9) from back 9 (holes 10-18)
+2. TEE BOX CONFIGURATIONS (ESSENTIAL):
+   - Identify ALL tee boxes shown on scorecard (Men\'s, Ladies\', Championship, etc.)
+   - For EACH tee box, extract:
+     * par_values: Exactly 18 integers (3-6) in hole order 1-18
+     * handicap_values: Exactly 18 unique integers (1-18) in hole order
+     * yardages: Exactly 18 integers (50-700 range) for that specific tee
+     * course_rating: Decimal 67.0-77.0 range
+     * slope_rating: Integer 55-155 range
+   - Create separate tee_box object for each tee configuration
 
-4. SCORING DATA:
-   - Player names from header
-   - Individual hole scores for each player
-   - Front nine subtotals (OUT)
-   - Back nine subtotals (IN)
-   - Total scores for each player
+3. MULTI-TEE RECOGNITION:
+   - Many scorecards show multiple yardage columns for different tees
+   - Championship/Blue/White/Red tees may have different ratings
+   - Men\'s vs Ladies\' tees have different course/slope ratings
+   - Extract ALL visible tee configurations as separate objects
 
-5. COURSE RATINGS:
-   - Course rating (difficulty for scratch golfer)
-   - Slope rating (relative difficulty, 55-155 scale)
-   - Total par and yardage
+4. PLAYER SCORE EXTRACTION:
+   - Extract ALL player names from scorecard
+   - For each player, capture hole-by-hole scores (18 integers)
+   - Calculate and validate front nine, back nine, and total scores
+   - Only include reasonable scores (1-15 per hole, 60-120 total)
 
-6. ADDITIONAL DETAILS:
-   - Date of play
-   - Tournament or event information
-   - Weather conditions
-   - Special notes or rules
+5. ENHANCED DATA VALIDATION:
+   - par_values: Must be exactly 18 integers, each 3-6
+   - handicap_values: Must be exactly 18 unique integers 1-18
+   - yardages: Must be exactly 18 integers, reasonable range 50-700
+   - course_rating: Must be 67.0-77.0 decimal range
+   - slope_rating: Must be 55-155 integer range
+   - total_par: Must equal sum of par_values (typically 70-72)
+   - total_yardage: Must equal sum of yardages
+   - player_scores: Each hole score 1-15, total score reasonable
 
-Extract every visible number, name, and piece of text. Be extremely thorough and accurate with numbers as they are critical for golf handicap calculations.';
+6. CONFIDENCE SCORING:
+   - Provide confidence (0.0-1.0) for each major data section
+   - Higher confidence for clear, printed text
+   - Lower confidence for handwritten or unclear data
+   - Overall confidence should reflect extraction quality
+
+SCORECARD LAYOUT INTELLIGENCE:
+- Front nine (holes 1-9) typically left side or top section
+- Back nine (holes 10-18) typically right side or bottom section
+- Multiple tee yardages shown in columns (Blue: 6800, White: 6200, Red: 5400)
+- Par and handicap values usually in dedicated rows
+- Player scores in grid format with running totals
+- Course ratings often at bottom with tee-specific values
+
+EXTRACTION PRIORITIES:
+1. Course name and location (100% required)
+2. Tee box data with complete 18-hole arrays (95%+ accuracy required)
+3. Course and slope ratings for each tee (essential for handicap calculations)
+4. Player scores if scorecard is completed (extract all visible)
+5. Tournament or round metadata if present
+
+Return ONLY the JSON object with no additional text. Ensure all numeric arrays contain exactly 18 values in hole order 1-18. If data is unclear, provide best interpretation but flag with lower confidence score.';
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function processEnhancedOpenAIResponse(string $content, string $imagePath): array
+    {
+        try {
+            // Extract JSON from the response (GPT sometimes adds explanation text)
+            $jsonStart = strpos($content, '{');
+            $jsonEnd = strrpos($content, '}');
+
+            if ($jsonStart !== false && $jsonEnd !== false) {
+                $jsonContent = substr($content, $jsonStart, $jsonEnd - $jsonStart + 1);
+                $parsedData = json_decode($jsonContent, true, 512, JSON_THROW_ON_ERROR);
+
+                if ($parsedData) {
+                    // Validate the enhanced data structure
+                    $validatedData = $this->validateGolfCourseData($parsedData);
+
+                    // Process multi-tee box configurations
+                    if (isset($validatedData['tee_boxes'])) {
+                        $validatedData['tee_boxes'] = $this->processTeeBoxConfigurations($validatedData['tee_boxes']);
+                    }
+
+                    // Process player scores
+                    if (isset($validatedData['player_scores'])) {
+                        $validatedData['player_scores'] = $this->processPlayerScores($validatedData['player_scores']);
+                    }
+
+                    // Calculate overall confidence
+                    $validatedData['overall_confidence'] = $this->calculateOverallConfidence($validatedData);
+
+                    return $this->formatEnhancedData($validatedData, $content);
+                }
+            }
+
+            throw new \InvalidArgumentException('Invalid JSON response from OCR provider');
+        } catch (\Exception $e) {
+            Log::warning('Failed to parse enhanced OpenAI response', [
+                'error' => $e->getMessage(),
+                'content' => substr($content, 0, 500), // Log first 500 chars
+            ]);
+
+            throw $e;
+        }
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function validateGolfCourseData(array $data): array
+    {
+        $validationErrors = [];
+        $validatedData = $data;
+
+        // Validate tee boxes
+        if (isset($data['tee_boxes']) && is_array($data['tee_boxes'])) {
+            foreach ($data['tee_boxes'] as $index => $teeBox) {
+                // Validate par values
+                if (isset($teeBox['par_values'])) {
+                    if (! is_array($teeBox['par_values']) || count($teeBox['par_values']) !== 18) {
+                        $validationErrors[] = "Tee box {$index}: par_values must contain exactly 18 values";
+                    } else {
+                        foreach ($teeBox['par_values'] as $par) {
+                            if (! is_numeric($par) || $par < 3 || $par > 6) {
+                                $validationErrors[] = "Tee box {$index}: par values must be 3-6";
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Validate handicap values
+                if (isset($teeBox['handicap_values'])) {
+                    if (! is_array($teeBox['handicap_values']) || count($teeBox['handicap_values']) !== 18) {
+                        $validationErrors[] = "Tee box {$index}: handicap_values must contain exactly 18 values";
+                    } else {
+                        $uniqueHandicaps = array_unique($teeBox['handicap_values']);
+                        if (count($uniqueHandicaps) !== 18) {
+                            $validationErrors[] = "Tee box {$index}: handicap values must be unique integers 1-18";
+                        }
+                        foreach ($teeBox['handicap_values'] as $handicap) {
+                            if (! is_numeric($handicap) || $handicap < 1 || $handicap > 18) {
+                                $validationErrors[] = "Tee box {$index}: handicap values must be 1-18";
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Validate yardages
+                if (isset($teeBox['yardages'])) {
+                    if (! is_array($teeBox['yardages']) || count($teeBox['yardages']) !== 18) {
+                        $validationErrors[] = "Tee box {$index}: yardages must contain exactly 18 values";
+                    } else {
+                        foreach ($teeBox['yardages'] as $yardage) {
+                            if (! is_numeric($yardage) || $yardage < 50 || $yardage > 700) {
+                                $validationErrors[] = "Tee box {$index}: yardages must be 50-700 range";
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Validate course rating
+                if (isset($teeBox['course_rating'])) {
+                    $rating = (float) $teeBox['course_rating'];
+                    if ($rating < 67.0 || $rating > 77.0) {
+                        $validationErrors[] = "Tee box {$index}: course_rating must be 67.0-77.0 range";
+                    }
+                }
+
+                // Validate slope rating
+                if (isset($teeBox['slope_rating'])) {
+                    $slope = (int) $teeBox['slope_rating'];
+                    if ($slope < 55 || $slope > 155) {
+                        $validationErrors[] = "Tee box {$index}: slope_rating must be 55-155 range";
+                    }
+                }
+            }
+        }
+
+        // Validate player scores
+        if (isset($data['player_scores']) && is_array($data['player_scores'])) {
+            foreach ($data['player_scores'] as $index => $player) {
+                if (isset($player['hole_scores']) && is_array($player['hole_scores'])) {
+                    if (count($player['hole_scores']) !== 18) {
+                        $validationErrors[] = "Player {$index}: hole_scores must contain exactly 18 values";
+                    } else {
+                        foreach ($player['hole_scores'] as $score) {
+                            if (! is_numeric($score) || $score < 1 || $score > 15) {
+                                $validationErrors[] = "Player {$index}: hole scores must be 1-15 range";
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        $validatedData['validation_errors'] = $validationErrors;
+
+        return $validatedData;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $teeBoxes
+     * @return array<int, array<string, mixed>>
+     */
+    private function processTeeBoxConfigurations(array $teeBoxes): array
+    {
+        $processedTeeBoxes = [];
+
+        foreach ($teeBoxes as $teeBox) {
+            $processed = $teeBox;
+
+            // Normalize tee name
+            if (isset($processed['tee_name'])) {
+                $processed['tee_name'] = $this->normalizeTeeNames($processed['tee_name']);
+            }
+
+            // Calculate totals if not provided
+            if (isset($processed['par_values']) && is_array($processed['par_values'])) {
+                $processed['total_par'] = array_sum($processed['par_values']);
+            }
+
+            if (isset($processed['yardages']) && is_array($processed['yardages'])) {
+                $processed['total_yardage'] = array_sum($processed['yardages']);
+            }
+
+            // Add front/back nine breakdowns
+            if (isset($processed['par_values']) && count($processed['par_values']) === 18) {
+                $processed['front_nine_par'] = array_sum(array_slice($processed['par_values'], 0, 9));
+                $processed['back_nine_par'] = array_sum(array_slice($processed['par_values'], 9, 9));
+            }
+
+            if (isset($processed['yardages']) && count($processed['yardages']) === 18) {
+                $processed['front_nine_yardage'] = array_sum(array_slice($processed['yardages'], 0, 9));
+                $processed['back_nine_yardage'] = array_sum(array_slice($processed['yardages'], 9, 9));
+            }
+
+            $processedTeeBoxes[] = $processed;
+        }
+
+        return $processedTeeBoxes;
+    }
+
+    /**
+     * @param  array<int, array<string, mixed>>  $playerScores
+     * @return array<int, array<string, mixed>>
+     */
+    private function processPlayerScores(array $playerScores): array
+    {
+        $processedScores = [];
+
+        foreach ($playerScores as $player) {
+            $processed = $player;
+
+            // Calculate totals if not provided
+            if (isset($processed['hole_scores']) && is_array($processed['hole_scores']) && count($processed['hole_scores']) === 18) {
+                $frontNine = array_slice($processed['hole_scores'], 0, 9);
+                $backNine = array_slice($processed['hole_scores'], 9, 9);
+
+                $processed['front_nine_total'] = array_sum($frontNine);
+                $processed['back_nine_total'] = array_sum($backNine);
+                $processed['total_score'] = $processed['front_nine_total'] + $processed['back_nine_total'];
+            }
+
+            $processedScores[] = $processed;
+        }
+
+        return $processedScores;
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function calculateOverallConfidence(array $data): float
+    {
+        $confidenceValues = [];
+
+        // Collect confidence scores from different sections
+        if (isset($data['course_information']['confidence'])) {
+            $confidenceValues[] = (float) $data['course_information']['confidence'];
+        }
+
+        if (isset($data['tee_boxes']) && is_array($data['tee_boxes'])) {
+            foreach ($data['tee_boxes'] as $teeBox) {
+                if (isset($teeBox['confidence'])) {
+                    $confidenceValues[] = (float) $teeBox['confidence'];
+                }
+            }
+        }
+
+        if (isset($data['player_scores']) && is_array($data['player_scores'])) {
+            foreach ($data['player_scores'] as $player) {
+                if (isset($player['confidence'])) {
+                    $confidenceValues[] = (float) $player['confidence'];
+                }
+            }
+        }
+
+        return count($confidenceValues) > 0 ? array_sum($confidenceValues) / count($confidenceValues) : 0.8;
+    }
+
+    /**
+     * @param  array<string, mixed>  $validatedData
+     * @return array<string, mixed>
+     */
+    private function formatEnhancedData(array $validatedData, string $rawContent): array
+    {
+        // Create formatted text representation for backward compatibility
+        $formattedText = $this->createFormattedTextFromEnhancedData($validatedData);
+
+        return [
+            'text' => $formattedText,
+            'raw_text' => $formattedText,
+            'confidence' => (int) (($validatedData['overall_confidence'] ?? 0.9) * 100),
+            'words' => $this->extractWordsFromText($formattedText),
+            'lines' => explode("\n", trim($formattedText)),
+            'structured_data' => $validatedData,
+            'golf_course_properties' => $this->extractEnhancedGolfProperties($validatedData),
+            'provider' => $this->currentProvider,
+            'enhanced_format' => true,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function createFormattedTextFromEnhancedData(array $data): string
+    {
+        $lines = [];
+
+        // Course information
+        if (isset($data['course_information'])) {
+            $courseInfo = $data['course_information'];
+
+            if (! empty($courseInfo['course_name'])) {
+                $lines[] = $courseInfo['course_name'];
+            }
+
+            if (isset($courseInfo['location'])) {
+                $location = $courseInfo['location'];
+                $locationParts = array_filter([
+                    $location['city'] ?? '',
+                    $location['state'] ?? '',
+                    $location['country'] ?? '',
+                ]);
+                if (! empty($locationParts)) {
+                    $lines[] = implode(', ', $locationParts);
+                }
+            }
+
+            if (! empty($courseInfo['architect'])) {
+                $lines[] = 'Architect: '.$courseInfo['architect'];
+            }
+
+            if (! empty($courseInfo['established_year'])) {
+                $lines[] = 'Established: '.$courseInfo['established_year'];
+            }
+        }
+
+        // Tee box information
+        if (isset($data['tee_boxes']) && is_array($data['tee_boxes'])) {
+            foreach ($data['tee_boxes'] as $teeBox) {
+                $lines[] = '';
+                $lines[] = ($teeBox['tee_name'] ?? 'Unknown').' Tees';
+
+                if (isset($teeBox['course_rating']) || isset($teeBox['slope_rating'])) {
+                    $ratingLine = '';
+                    if (! empty($teeBox['course_rating'])) {
+                        $ratingLine .= 'Rating: '.$teeBox['course_rating'];
+                    }
+                    if (! empty($teeBox['slope_rating'])) {
+                        $ratingLine .= ($ratingLine ? '  ' : '').'Slope: '.$teeBox['slope_rating'];
+                    }
+                    $lines[] = $ratingLine;
+                }
+
+                if (isset($teeBox['total_par']) || isset($teeBox['total_yardage'])) {
+                    $totalLine = '';
+                    if (! empty($teeBox['total_par'])) {
+                        $totalLine .= 'Par: '.$teeBox['total_par'];
+                    }
+                    if (! empty($teeBox['total_yardage'])) {
+                        $totalLine .= ($totalLine ? '  ' : '').'Yardage: '.$teeBox['total_yardage'];
+                    }
+                    $lines[] = $totalLine;
+                }
+            }
+        }
+
+        // Player scores
+        if (isset($data['player_scores']) && is_array($data['player_scores'])) {
+            $lines[] = '';
+            $lines[] = 'Player Scores:';
+            foreach ($data['player_scores'] as $player) {
+                if (! empty($player['player_name']) && ! empty($player['total_score'])) {
+                    $lines[] = $player['player_name'].': '.$player['total_score'];
+                }
+            }
+        }
+
+        return implode("\n", $lines);
+    }
+
+    /**
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private function extractEnhancedGolfProperties(array $data): array
+    {
+        $properties = [];
+
+        // Course information
+        if (isset($data['course_information'])) {
+            $courseInfo = $data['course_information'];
+            $properties['course_name'] = $courseInfo['course_name'] ?? null;
+            $properties['architect'] = $courseInfo['architect'] ?? null;
+            $properties['established_year'] = $courseInfo['established_year'] ?? null;
+            $properties['phone'] = $courseInfo['phone'] ?? null;
+            $properties['website'] = $courseInfo['website'] ?? null;
+
+            // Location data
+            if (isset($courseInfo['location'])) {
+                $properties['location'] = $courseInfo['location'];
+                $properties['course_location'] = implode(', ', array_filter([
+                    $courseInfo['location']['city'] ?? '',
+                    $courseInfo['location']['state'] ?? '',
+                    $courseInfo['location']['country'] ?? '',
+                ]));
+            }
+        }
+
+        // Tee box data (use first tee box as primary)
+        if (isset($data['tee_boxes'][0])) {
+            $primaryTee = $data['tee_boxes'][0];
+            $properties['tee_name'] = $primaryTee['tee_name'] ?? null;
+            $properties['course_rating'] = $primaryTee['course_rating'] ?? null;
+            $properties['slope_rating'] = $primaryTee['slope_rating'] ?? null;
+            $properties['total_par'] = $primaryTee['total_par'] ?? null;
+            $properties['total_yardage'] = $primaryTee['total_yardage'] ?? null;
+            $properties['par_values'] = $primaryTee['par_values'] ?? [];
+            $properties['handicap_values'] = $primaryTee['handicap_values'] ?? [];
+            $properties['yardage_values'] = $primaryTee['yardages'] ?? [];
+        }
+
+        // All tee boxes
+        $properties['tee_boxes'] = $data['tee_boxes'] ?? [];
+
+        // Player data
+        if (isset($data['player_scores'])) {
+            $properties['players'] = array_column($data['player_scores'], 'player_name');
+            $properties['player_scores'] = $data['player_scores'];
+        }
+
+        // Round metadata
+        if (isset($data['round_metadata'])) {
+            $metadata = $data['round_metadata'];
+            $properties['date_played'] = $metadata['date_played'] ?? null;
+            $properties['weather_conditions'] = $metadata['weather_conditions'] ?? null;
+            $properties['tournament_name'] = $metadata['tournament_name'] ?? null;
+            $properties['notes'] = $metadata['notes'] ?? null;
+        }
+
+        // Data quality metrics
+        $properties['overall_confidence'] = $data['overall_confidence'] ?? 0.8;
+        $properties['validation_errors'] = $data['validation_errors'] ?? [];
+        $properties['enhanced_extraction'] = true;
+
+        return $properties;
     }
 
     /**

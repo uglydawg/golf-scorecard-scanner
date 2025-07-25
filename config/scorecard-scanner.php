@@ -16,6 +16,7 @@ return [
 
     'ocr' => [
         'default' => env('SCORECARD_OCR_PROVIDER', 'mock'),
+        'enhanced_prompt_enabled' => env('SCORECARD_ENHANCED_PROMPT', false),
 
         'providers' => [
             'mock' => [

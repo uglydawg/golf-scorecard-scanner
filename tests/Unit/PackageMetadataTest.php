@@ -32,7 +32,7 @@ it('has all required package metadata fields', function () {
     ];
 
     foreach ($requiredFields as $field) {
-        expect($this->composerData)->toHaveKey($field, "composer.json must have '{$field}' field");
+        expect($this->composerData)->toHaveKey($field);
     }
 });
 
@@ -44,7 +44,7 @@ it('has valid vendor/package name format', function () {
         'Package name must follow vendor/package format'
     );
 
-    expect($packageName)->toContain('/', 'Package name must contain vendor/package separator');
+    expect($packageName)->toContain('/');
 });
 
 it('is configured as a library package', function () {
@@ -54,10 +54,7 @@ it('is configured as a library package', function () {
 it('has a valid open source license', function () {
     $validLicenses = ['MIT', 'Apache-2.0', 'GPL-2.0', 'GPL-3.0', 'BSD-2-Clause', 'BSD-3-Clause'];
 
-    expect($validLicenses)->toContain(
-        $this->composerData['license'],
-        'Package must have a valid open source license'
-    );
+    expect($validLicenses)->toContain($this->composerData['license']);
 });
 
 it('has a descriptive package description', function () {
@@ -83,7 +80,7 @@ it('includes relevant keywords', function () {
 
     $expectedKeywords = ['laravel', 'golf', 'ocr', 'scorecard', 'package'];
     foreach ($expectedKeywords as $expectedKeyword) {
-        expect($keywords)->toContain($expectedKeyword, "Keywords should include '{$expectedKeyword}'");
+        expect($keywords)->toContain($expectedKeyword);
     }
 });
 
@@ -94,8 +91,10 @@ it('has valid author information', function () {
     expect(count($authors))->toBeGreaterThan(0, 'Package must have at least one author');
 
     $firstAuthor = $authors[0];
-    expect($firstAuthor)->toHaveKey('name', 'Author must have name');
-    expect($firstAuthor)->toHaveKey('email', 'Author must have email');
+    expect($firstAuthor)->toHaveKey('name');
+    expect($firstAuthor['name'])->toBe('Golf Scorecard Scanner Team');
+    expect($firstAuthor)->toHaveKey('email');
+    expect($firstAuthor['email'])->toBe('team@scorecard-scanner.com');
 });
 
 it('requires compatible PHP version', function () {
@@ -138,48 +137,39 @@ it('declares all required dependencies', function () {
     ];
 
     foreach ($requiredDependencies as $dependency) {
-        expect($this->composerData['require'])->toHaveKey(
-            $dependency,
-            "Package must require '{$dependency}'"
-        );
+        expect($this->composerData['require'])->toHaveKey($dependency);
     }
 });
 
 it('has proper PSR-4 autoload configuration', function () {
-    expect($this->composerData)->toHaveKey('autoload', 'Package must have autoload configuration');
+    expect($this->composerData)->toHaveKey('autoload');
 
     $autoload = $this->composerData['autoload'];
-    expect($autoload)->toHaveKey('psr-4', 'Package must use PSR-4 autoloading');
+    expect($autoload)->toHaveKey('psr-4');
 
     $psr4 = $autoload['psr-4'];
-    expect($psr4)->toHaveKey('ScorecardScanner\\', 'Package must define ScorecardScanner namespace');
-    expect($psr4['ScorecardScanner\\'])->toBe('src/', 'ScorecardScanner namespace must map to src/ directory');
+    expect($psr4)->toHaveKey('ScorecardScanner\\');
+    expect($psr4['ScorecardScanner\\'])->toBe('src/');
 });
 
 it('enables Laravel service provider auto-discovery', function () {
-    expect($this->composerData)->toHaveKey('extra', 'Package must have extra configuration');
+    expect($this->composerData)->toHaveKey('extra');
 
     $extra = $this->composerData['extra'];
-    expect($extra)->toHaveKey('laravel', 'Package must have Laravel-specific configuration');
+    expect($extra)->toHaveKey('laravel');
 
     $laravel = $extra['laravel'];
-    expect($laravel)->toHaveKey('providers', 'Package must define service providers');
+    expect($laravel)->toHaveKey('providers');
 
     $providers = $laravel['providers'];
-    expect($providers)->toContain(
-        'ScorecardScanner\\Providers\\ScorecardScannerServiceProvider',
-        'Package must include ScorecardScannerServiceProvider in auto-discovery'
-    );
+    expect($providers)->toContain('ScorecardScanner\\Providers\\ScorecardScannerServiceProvider');
 });
 
 it('prefers stable dependencies when configured', function () {
     // For production packages, minimum-stability should be 'stable'
     if (isset($this->composerData['minimum-stability'])) {
         $validStabilities = ['stable', 'RC', 'beta'];
-        expect($validStabilities)->toContain(
-            $this->composerData['minimum-stability'],
-            'Package should prefer stable dependencies'
-        );
+        expect($validStabilities)->toContain($this->composerData['minimum-stability']);
     } else {
         $this->markTestSkipped('No minimum-stability configured');
     }
