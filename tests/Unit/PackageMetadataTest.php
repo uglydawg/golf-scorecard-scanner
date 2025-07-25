@@ -15,7 +15,7 @@ beforeEach(function () use (&$composerData) {
 
     $composerData = json_decode(File::get($composerPath), true);
     expect($composerData)->toBeArray('composer.json must contain valid JSON');
-    
+
     $this->composerData = $composerData;
 });
 

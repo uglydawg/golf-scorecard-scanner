@@ -35,7 +35,7 @@ it('can autoload policies via PSR-4', function () {
 
 it('has proper source directory structure', function () {
     $basePath = dirname(__DIR__, 2);
-    
+
     expect($basePath.'/src')->toBeDirectory();
     expect($basePath.'/src/Http')->toBeDirectory();
     expect($basePath.'/src/Http/Controllers')->toBeDirectory();
