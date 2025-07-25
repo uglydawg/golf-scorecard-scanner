@@ -2,103 +2,90 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit;
-
 use Illuminate\Support\Facades\Config;
-use Tests\TestCase;
 
-class ConfigurationPublishingTest extends TestCase
-{
-    public function test_default_configuration_is_loaded()
-    {
-        $config = config('scorecard-scanner');
+uses(Tests\TestCase::class);
 
-        $this->assertIsArray($config);
-        $this->assertArrayHasKey('ocr', $config);
-        $this->assertArrayHasKey('storage', $config);
-        $this->assertArrayHasKey('processing', $config);
-    }
+it('loads default configuration correctly', function () {
+    $config = config('scorecard-scanner');
 
-    public function test_ocr_configuration_has_correct_structure()
-    {
-        $ocrConfig = config('scorecard-scanner.ocr');
+    expect($config)->toBeArray();
+    expect($config)->toHaveKey('ocr');
+    expect($config)->toHaveKey('storage');
+    expect($config)->toHaveKey('processing');
+});
 
-        $this->assertArrayHasKey('default', $ocrConfig);
-        $this->assertArrayHasKey('providers', $ocrConfig);
+it('has properly structured OCR configuration', function () {
+    $ocrConfig = config('scorecard-scanner.ocr');
 
-        $providers = $ocrConfig['providers'];
-        $this->assertArrayHasKey('mock', $providers);
-        $this->assertArrayHasKey('ocrspace', $providers);
-        $this->assertArrayHasKey('google', $providers);
-        $this->assertArrayHasKey('aws', $providers);
-    }
+    expect($ocrConfig)->toHaveKey('default');
+    expect($ocrConfig)->toHaveKey('providers');
 
-    public function test_storage_configuration_has_correct_structure()
-    {
-        $storageConfig = config('scorecard-scanner.storage');
+    $providers = $ocrConfig['providers'];
+    expect($providers)->toHaveKey('mock');
+    expect($providers)->toHaveKey('ocrspace');
+    expect($providers)->toHaveKey('google');
+    expect($providers)->toHaveKey('aws');
+});
 
-        $this->assertArrayHasKey('disk', $storageConfig);
-        $this->assertArrayHasKey('path', $storageConfig);
-        $this->assertArrayHasKey('cleanup_after_days', $storageConfig);
-    }
+it('has properly structured storage configuration', function () {
+    $storageConfig = config('scorecard-scanner.storage');
 
-    public function test_processing_configuration_has_correct_structure()
-    {
-        $processingConfig = config('scorecard-scanner.processing');
+    expect($storageConfig)->toHaveKey('disk');
+    expect($storageConfig)->toHaveKey('path');
+    expect($storageConfig)->toHaveKey('cleanup_after_days');
+});
 
-        $this->assertArrayHasKey('confidence_threshold', $processingConfig);
-        $this->assertArrayHasKey('max_file_size', $processingConfig);
-        $this->assertArrayHasKey('allowed_types', $processingConfig);
-    }
+it('has properly structured processing configuration', function () {
+    $processingConfig = config('scorecard-scanner.processing');
 
-    public function test_default_ocr_provider_is_mock()
-    {
-        $defaultProvider = config('scorecard-scanner.ocr.default');
-        $this->assertEquals('mock', $defaultProvider);
-    }
+    expect($processingConfig)->toHaveKey('confidence_threshold');
+    expect($processingConfig)->toHaveKey('max_file_size');
+    expect($processingConfig)->toHaveKey('allowed_types');
+});
 
-    public function test_configuration_can_be_published()
-    {
-        // This test verifies that the configuration publishing is set up correctly
-        // The actual publishing would be tested in integration tests
-        $publishedConfigPath = config_path('scorecard-scanner.php');
+it('has a configured default OCR provider', function () {
+    $defaultProvider = config('scorecard-scanner.ocr.default');
+    expect($defaultProvider)->toBeString();
+    expect($defaultProvider)->not->toBeEmpty();
+});
 
-        // If config is published, it should exist, otherwise use package default
-        $this->assertTrue(
-            file_exists($publishedConfigPath) || config('scorecard-scanner') !== null
-        );
-    }
+it('can publish configuration to host application', function () {
+    // This test verifies that the configuration publishing is set up correctly
+    // The actual publishing would be tested in integration tests
+    $publishedConfigPath = config_path('scorecard-scanner.php');
 
-    public function test_environment_variables_override_defaults()
-    {
-        // Test that environment variables can override configuration
-        Config::set('scorecard-scanner.ocr.default', 'ocrspace');
+    // If config is published, it should exist, otherwise use package default
+    expect(
+        file_exists($publishedConfigPath) || config('scorecard-scanner') !== null
+    )->toBeTrue();
+});
 
-        $provider = config('scorecard-scanner.ocr.default');
-        $this->assertEquals('ocrspace', $provider);
-    }
+it('allows environment variables to override defaults', function () {
+    // Test that environment variables can override configuration
+    Config::set('scorecard-scanner.ocr.default', 'ocrspace');
 
-    public function test_confidence_threshold_is_numeric()
-    {
-        $threshold = config('scorecard-scanner.processing.confidence_threshold');
-        $this->assertIsNumeric($threshold);
-        $this->assertGreaterThan(0, $threshold);
-        $this->assertLessThanOrEqual(1, $threshold);
-    }
+    $provider = config('scorecard-scanner.ocr.default');
+    expect($provider)->toBe('ocrspace');
+});
 
-    public function test_max_file_size_is_numeric()
-    {
-        $maxSize = config('scorecard-scanner.processing.max_file_size');
-        $this->assertIsNumeric($maxSize);
-        $this->assertGreaterThan(0, $maxSize);
-    }
+it('has valid numeric confidence threshold', function () {
+    $threshold = config('scorecard-scanner.processing.confidence_threshold');
+    expect($threshold)->toBeNumeric();
+    expect($threshold)->toBeGreaterThan(0);
+    expect($threshold)->toBeLessThanOrEqual(1);
+});
 
-    public function test_allowed_types_is_array()
-    {
-        $allowedTypes = config('scorecard-scanner.processing.allowed_types');
-        $this->assertIsArray($allowedTypes);
-        $this->assertContains('jpg', $allowedTypes);
-        $this->assertContains('jpeg', $allowedTypes);
-        $this->assertContains('png', $allowedTypes);
-    }
-}
+it('has valid numeric max file size', function () {
+    $maxSize = config('scorecard-scanner.processing.max_file_size');
+    expect($maxSize)->toBeNumeric();
+    expect($maxSize)->toBeGreaterThan(0);
+});
+
+it('has valid array of allowed file types', function () {
+    $allowedTypes = config('scorecard-scanner.processing.allowed_types');
+    expect($allowedTypes)->toBeArray();
+    expect($allowedTypes)->toContain('jpg');
+    expect($allowedTypes)->toContain('jpeg');
+    expect($allowedTypes)->toContain('png');
+});

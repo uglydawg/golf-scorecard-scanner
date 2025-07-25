@@ -81,7 +81,7 @@ it('processes cyprus point front nine scorecard', function () {
 
         // Analyze the text for golf-specific data
         echo "⛳ Golf Data Analysis:\n";
-        analyzeGolfData($ocrResults['text'], 'Front Nine');
+        analyzeGolfDataFeature($ocrResults['text'], 'Front Nine');
 
         // Extract and log detailed hole data
         echo "\n🏌️ Detailed Hole Data Extraction:\n";
@@ -187,7 +187,7 @@ it('processes cyprus point back nine scorecard', function () {
 
         // Analyze the text for golf-specific data
         echo "⛳ Golf Data Analysis:\n";
-        analyzeGolfData($ocrResults['text'], 'Back Nine');
+        analyzeGolfDataFeature($ocrResults['text'], 'Back Nine');
 
     } catch (\Exception $e) {
         echo '❌ OCR Processing failed: '.$e->getMessage()."\n";
@@ -285,7 +285,7 @@ it('tests image preprocessing pipeline', function () {
 });
 
 // Helper functions
-function analyzeGolfData(string $text, string $section): void
+function analyzeGolfDataFeature(string $text, string $section): void
 {
     $lines = explode("\n", $text);
 

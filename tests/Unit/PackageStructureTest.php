@@ -2,84 +2,68 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit;
+it('can autoload controllers via PSR-4', function () {
+    expect(class_exists('ScorecardScanner\Http\Controllers\Api\ScorecardScanController'))->toBeTrue();
+});
 
-use PHPUnit\Framework\TestCase;
-use ReflectionClass;
+it('can autoload models via PSR-4', function () {
+    expect(class_exists('ScorecardScanner\Models\ScorecardScan'))->toBeTrue();
+    expect(class_exists('ScorecardScanner\Models\Course'))->toBeTrue();
+    expect(class_exists('ScorecardScanner\Models\Round'))->toBeTrue();
+    expect(class_exists('ScorecardScanner\Models\RoundScore'))->toBeTrue();
+    expect(class_exists('ScorecardScanner\Models\UnverifiedCourse'))->toBeTrue();
+    expect(class_exists('ScorecardScanner\Models\User'))->toBeTrue();
+});
 
-class PackageStructureTest extends TestCase
-{
-    public function test_psr4_autoloading_works_for_controllers()
-    {
-        $this->assertTrue(class_exists('ScorecardScanner\Http\Controllers\Api\ScorecardScanController'));
-    }
+it('can autoload services via PSR-4', function () {
+    expect(class_exists('ScorecardScanner\Services\ScorecardProcessingService'))->toBeTrue();
+    expect(class_exists('ScorecardScanner\Services\ImageProcessingService'))->toBeTrue();
+    expect(class_exists('ScorecardScanner\Services\OcrService'))->toBeTrue();
+});
 
-    public function test_psr4_autoloading_works_for_models()
-    {
-        $this->assertTrue(class_exists('ScorecardScanner\Models\ScorecardScan'));
-        $this->assertTrue(class_exists('ScorecardScanner\Models\Course'));
-        $this->assertTrue(class_exists('ScorecardScanner\Models\Round'));
-        $this->assertTrue(class_exists('ScorecardScanner\Models\RoundScore'));
-        $this->assertTrue(class_exists('ScorecardScanner\Models\UnverifiedCourse'));
-        $this->assertTrue(class_exists('ScorecardScanner\Models\User'));
-    }
+it('can autoload requests via PSR-4', function () {
+    expect(class_exists('ScorecardScanner\Http\Requests\StoreScorecardScanRequest'))->toBeTrue();
+});
 
-    public function test_psr4_autoloading_works_for_services()
-    {
-        $this->assertTrue(class_exists('ScorecardScanner\Services\ScorecardProcessingService'));
-        $this->assertTrue(class_exists('ScorecardScanner\Services\ImageProcessingService'));
-        $this->assertTrue(class_exists('ScorecardScanner\Services\OcrService'));
-    }
+it('can autoload resources via PSR-4', function () {
+    expect(class_exists('ScorecardScanner\Http\Resources\ScorecardScanResource'))->toBeTrue();
+});
 
-    public function test_psr4_autoloading_works_for_requests()
-    {
-        $this->assertTrue(class_exists('ScorecardScanner\Http\Requests\StoreScorecardScanRequest'));
-    }
+it('can autoload policies via PSR-4', function () {
+    expect(class_exists('ScorecardScanner\Policies\ScorecardScanPolicy'))->toBeTrue();
+});
 
-    public function test_psr4_autoloading_works_for_resources()
-    {
-        $this->assertTrue(class_exists('ScorecardScanner\Http\Resources\ScorecardScanResource'));
-    }
+it('has proper source directory structure', function () {
+    $basePath = dirname(__DIR__, 2);
+    
+    expect($basePath.'/src')->toBeDirectory();
+    expect($basePath.'/src/Http')->toBeDirectory();
+    expect($basePath.'/src/Http/Controllers')->toBeDirectory();
+    expect($basePath.'/src/Http/Controllers/Api')->toBeDirectory();
+    expect($basePath.'/src/Http/Requests')->toBeDirectory();
+    expect($basePath.'/src/Http/Resources')->toBeDirectory();
+    expect($basePath.'/src/Models')->toBeDirectory();
+    expect($basePath.'/src/Services')->toBeDirectory();
+    expect($basePath.'/src/Policies')->toBeDirectory();
+});
 
-    public function test_psr4_autoloading_works_for_policies()
-    {
-        $this->assertTrue(class_exists('ScorecardScanner\Policies\ScorecardScanPolicy'));
-    }
+it('places package classes in correct namespaces', function () {
+    $reflection = new ReflectionClass('ScorecardScanner\Models\ScorecardScan');
+    expect($reflection->getNamespaceName())->toBe('ScorecardScanner\Models');
 
-    public function test_src_directory_structure_exists()
-    {
-        $basePath = dirname(__DIR__, 2);
-        $this->assertDirectoryExists($basePath.'/src');
-        $this->assertDirectoryExists($basePath.'/src/Http');
-        $this->assertDirectoryExists($basePath.'/src/Http/Controllers');
-        $this->assertDirectoryExists($basePath.'/src/Http/Controllers/Api');
-        $this->assertDirectoryExists($basePath.'/src/Http/Requests');
-        $this->assertDirectoryExists($basePath.'/src/Http/Resources');
-        $this->assertDirectoryExists($basePath.'/src/Models');
-        $this->assertDirectoryExists($basePath.'/src/Services');
-        $this->assertDirectoryExists($basePath.'/src/Policies');
-    }
+    $reflection = new ReflectionClass('ScorecardScanner\Services\ScorecardProcessingService');
+    expect($reflection->getNamespaceName())->toBe('ScorecardScanner\Services');
 
-    public function test_package_classes_are_in_correct_namespace()
-    {
-        $reflection = new ReflectionClass('ScorecardScanner\Models\ScorecardScan');
-        $this->assertEquals('ScorecardScanner\Models', $reflection->getNamespaceName());
+    $reflection = new ReflectionClass('ScorecardScanner\Http\Controllers\Api\ScorecardScanController');
+    expect($reflection->getNamespaceName())->toBe('ScorecardScanner\Http\Controllers\Api');
+});
 
-        $reflection = new ReflectionClass('ScorecardScanner\Services\ScorecardProcessingService');
-        $this->assertEquals('ScorecardScanner\Services', $reflection->getNamespaceName());
+it('includes package namespace in composer autoload', function () {
+    $basePath = dirname(__DIR__, 2);
+    $composerContent = json_decode(file_get_contents($basePath.'/composer.json'), true);
 
-        $reflection = new ReflectionClass('ScorecardScanner\Http\Controllers\Api\ScorecardScanController');
-        $this->assertEquals('ScorecardScanner\Http\Controllers\Api', $reflection->getNamespaceName());
-    }
-
-    public function test_composer_autoload_includes_package_namespace()
-    {
-        $basePath = dirname(__DIR__, 2);
-        $composerContent = json_decode(file_get_contents($basePath.'/composer.json'), true);
-
-        $this->assertArrayHasKey('autoload', $composerContent);
-        $this->assertArrayHasKey('psr-4', $composerContent['autoload']);
-        $this->assertArrayHasKey('ScorecardScanner\\', $composerContent['autoload']['psr-4']);
-        $this->assertEquals('src/', $composerContent['autoload']['psr-4']['ScorecardScanner\\']);
-    }
-}
+    expect($composerContent)->toHaveKey('autoload');
+    expect($composerContent['autoload'])->toHaveKey('psr-4');
+    expect($composerContent['autoload']['psr-4'])->toHaveKey('ScorecardScanner\\');
+    expect($composerContent['autoload']['psr-4']['ScorecardScanner\\'])->toBe('src/');
+});

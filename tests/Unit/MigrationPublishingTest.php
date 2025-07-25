@@ -2,240 +2,222 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit;
-
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
-use Tests\TestCase;
 
-class MigrationPublishingTest extends TestCase
-{
-    protected function setUp(): void
-    {
-        parent::setUp();
+uses(Tests\TestCase::class);
 
-        // Clean up any published migrations from previous tests
-        $this->cleanupPublishedMigrations();
-    }
+beforeEach(function () {
+    $this->cleanupPublishedMigrations();
+});
 
-    protected function tearDown(): void
-    {
-        $this->cleanupPublishedMigrations();
-        parent::tearDown();
-    }
+afterEach(function () {
+    $this->cleanupPublishedMigrations();
+});
 
-    public function test_package_migrations_directory_exists()
-    {
-        $migrationsPath = base_path('src/database/migrations');
-        $this->assertDirectoryExists($migrationsPath);
-    }
+it('has migrations directory in package', function () {
+    $migrationsPath = base_path('src/database/migrations');
+    expect($migrationsPath)->toBeDirectory();
+});
 
-    public function test_package_contains_required_migration_files()
-    {
-        $migrationsPath = base_path('src/database/migrations');
-        $migrationFiles = File::files($migrationsPath);
+it('contains all required migration files', function () {
+    $migrationsPath = base_path('src/database/migrations');
+    $migrationFiles = File::files($migrationsPath);
 
-        $this->assertGreaterThan(0, count($migrationFiles));
+    expect(count($migrationFiles))->toBeGreaterThan(0);
 
-        // Check for expected migration files
-        $expectedMigrations = [
-            'golf_courses',
-            'golf_holes',
-            'scorecard_scans',
-            'scorecard_players',
-            'player_scores',
-        ];
+    // Check for expected migration files
+    $expectedMigrations = [
+        'golf_courses',
+        'golf_holes',
+        'scorecard_scans',
+        'scorecard_players',
+        'player_scores',
+    ];
 
-        foreach ($expectedMigrations as $expectedTable) {
-            $found = false;
-            foreach ($migrationFiles as $file) {
-                if (str_contains($file->getFilename(), $expectedTable)) {
-                    $found = true;
-                    break;
-                }
+    foreach ($expectedMigrations as $expectedTable) {
+        $found = false;
+        foreach ($migrationFiles as $file) {
+            if (str_contains($file->getFilename(), $expectedTable)) {
+                $found = true;
+                break;
             }
-            $this->assertTrue($found, "Migration for table '{$expectedTable}' not found");
+        }
+        expect($found)->toBeTrue("Migration for table '{$expectedTable}' not found");
+    }
+});
+
+it('can publish migrations to host application', function () {
+    // Publish migrations using vendor:publish command
+    Artisan::call('vendor:publish', [
+        '--tag' => 'scorecard-scanner-migrations',
+        '--force' => true,
+    ]);
+
+    // Check that migrations were published to database/migrations
+    $publishedPath = database_path('migrations');
+    $publishedFiles = File::files($publishedPath);
+
+    $packageMigrations = File::files(base_path('src/database/migrations'));
+
+    // Should have at least the same number of package migrations published
+    expect(count($publishedFiles))->toBeGreaterThanOrEqual(count($packageMigrations));
+
+    // Check that specific migration files exist
+    $publishedFilenames = collect($publishedFiles)->map(fn ($file) => $file->getFilename())->toArray();
+
+    foreach ($packageMigrations as $packageMigration) {
+        $migrationName = extractMigrationName($packageMigration->getFilename());
+        $found = false;
+
+        foreach ($publishedFilenames as $publishedFile) {
+            if (str_contains($publishedFile, $migrationName)) {
+                $found = true;
+                break;
+            }
+        }
+
+        expect($found)->toBeTrue("Migration '{$migrationName}' was not published");
+    }
+});
+
+it('publishes migrations with valid Laravel structure', function () {
+    // Publish migrations first
+    Artisan::call('vendor:publish', [
+        '--tag' => 'scorecard-scanner-migrations',
+        '--force' => true,
+    ]);
+
+    $publishedPath = database_path('migrations');
+    $publishedFiles = File::files($publishedPath);
+
+    foreach ($publishedFiles as $file) {
+        $content = File::get($file->getPathname());
+
+        // Check that migration has proper Laravel migration structure
+        expect($content)->toContain('<?php');
+        expect($content)->toContain('use Illuminate\Database\Migrations\Migration');
+        expect($content)->toContain('use Illuminate\Database\Schema\Blueprint');
+        expect($content)->toContain('class ');
+        expect($content)->toContain('public function up()');
+        expect($content)->toContain('public function down()');
+    }
+});
+
+it('publishes migrations with sequential timestamps', function () {
+    // Publish migrations
+    Artisan::call('vendor:publish', [
+        '--tag' => 'scorecard-scanner-migrations',
+        '--force' => true,
+    ]);
+
+    $publishedPath = database_path('migrations');
+    $publishedFiles = File::files($publishedPath);
+
+    $timestamps = [];
+    foreach ($publishedFiles as $file) {
+        $filename = $file->getFilename();
+        if (preg_match('/^(\d{4}_\d{2}_\d{2}_\d{6})_/', $filename, $matches)) {
+            $timestamps[] = $matches[1];
         }
     }
 
-    public function test_migrations_can_be_published()
-    {
-        // Publish migrations using vendor:publish command
-        Artisan::call('vendor:publish', [
-            '--tag' => 'scorecard-scanner-migrations',
-            '--force' => true,
-        ]);
+    // Timestamps should be in ascending order
+    $sortedTimestamps = $timestamps;
+    sort($sortedTimestamps);
 
-        // Check that migrations were published to database/migrations
-        $publishedPath = database_path('migrations');
-        $publishedFiles = File::files($publishedPath);
+    expect($timestamps)->toBe($sortedTimestamps, 'Migration timestamps should be sequential');
+});
 
-        $packageMigrations = File::files(base_path('src/database/migrations'));
+it('publishes runnable migrations', function () {
+    // Publish migrations
+    Artisan::call('vendor:publish', [
+        '--tag' => 'scorecard-scanner-migrations',
+        '--force' => true,
+    ]);
 
-        // Should have at least the same number of package migrations published
-        $this->assertGreaterThanOrEqual(count($packageMigrations), count($publishedFiles));
+    // Run migrations (this will test that they are syntactically correct)
+    $exitCode = Artisan::call('migrate', ['--pretend' => true]);
 
-        // Check that specific migration files exist
-        $publishedFilenames = collect($publishedFiles)->map(fn ($file) => $file->getFilename())->toArray();
+    expect($exitCode)->toBe(0, 'Published migrations should be valid and runnable');
+});
 
-        foreach ($packageMigrations as $packageMigration) {
-            $migrationName = $this->extractMigrationName($packageMigration->getFilename());
-            $found = false;
+it('preserves table names when publishing migrations', function () {
+    // Publish migrations
+    Artisan::call('vendor:publish', [
+        '--tag' => 'scorecard-scanner-migrations',
+        '--force' => true,
+    ]);
 
-            foreach ($publishedFilenames as $publishedFile) {
-                if (str_contains($publishedFile, $migrationName)) {
-                    $found = true;
-                    break;
-                }
-            }
+    $publishedPath = database_path('migrations');
+    $publishedFiles = File::files($publishedPath);
 
-            $this->assertTrue($found, "Migration '{$migrationName}' was not published");
-        }
-    }
+    $expectedTables = [
+        'golf_courses',
+        'golf_holes',
+        'scorecard_scans',
+        'scorecard_players',
+        'player_scores',
+    ];
 
-    public function test_published_migrations_have_valid_structure()
-    {
-        // Publish migrations first
-        Artisan::call('vendor:publish', [
-            '--tag' => 'scorecard-scanner-migrations',
-            '--force' => true,
-        ]);
-
-        $publishedPath = database_path('migrations');
-        $publishedFiles = File::files($publishedPath);
-
+    foreach ($expectedTables as $expectedTable) {
+        $found = false;
         foreach ($publishedFiles as $file) {
             $content = File::get($file->getPathname());
-
-            // Check that migration has proper Laravel migration structure
-            $this->assertStringContainsString('<?php', $content);
-            $this->assertStringContainsString('use Illuminate\Database\Migrations\Migration', $content);
-            $this->assertStringContainsString('use Illuminate\Database\Schema\Blueprint', $content);
-            $this->assertStringContainsString('class ', $content);
-            $this->assertStringContainsString('public function up()', $content);
-            $this->assertStringContainsString('public function down()', $content);
-        }
-    }
-
-    public function test_migration_timestamps_are_sequential()
-    {
-        // Publish migrations
-        Artisan::call('vendor:publish', [
-            '--tag' => 'scorecard-scanner-migrations',
-            '--force' => true,
-        ]);
-
-        $publishedPath = database_path('migrations');
-        $publishedFiles = File::files($publishedPath);
-
-        $timestamps = [];
-        foreach ($publishedFiles as $file) {
-            $filename = $file->getFilename();
-            if (preg_match('/^(\d{4}_\d{2}_\d{2}_\d{6})_/', $filename, $matches)) {
-                $timestamps[] = $matches[1];
+            if (str_contains($content, "create('{$expectedTable}'")) {
+                $found = true;
+                break;
             }
         }
+        expect($found)->toBeTrue("Published migrations should preserve table name '{$expectedTable}'");
+    }
+});
 
-        // Timestamps should be in ascending order
-        $sortedTimestamps = $timestamps;
-        sort($sortedTimestamps);
+it('overwrites existing migrations when force publishing', function () {
+    // Publish migrations first time
+    Artisan::call('vendor:publish', [
+        '--tag' => 'scorecard-scanner-migrations',
+    ]);
 
-        $this->assertEquals($sortedTimestamps, $timestamps, 'Migration timestamps should be sequential');
+    $publishedPath = database_path('migrations');
+    $firstPublishFiles = File::files($publishedPath);
+    $firstPublishCount = count($firstPublishFiles);
+
+    // Publish again with force
+    Artisan::call('vendor:publish', [
+        '--tag' => 'scorecard-scanner-migrations',
+        '--force' => true,
+    ]);
+
+    $secondPublishFiles = File::files($publishedPath);
+    $secondPublishCount = count($secondPublishFiles);
+
+    // Should have same number of files (overwritten, not duplicated)
+    expect($secondPublishCount)->toBe($firstPublishCount);
+});
+
+function extractMigrationName(string $filename): string
+{
+    // Extract migration name from filename (e.g., "create_golf_courses_table" from "2024_01_01_000000_create_golf_courses_table.php")
+    if (preg_match('/^\d{4}_\d{2}_\d{2}_\d{6}_(.+)\.php$/', $filename, $matches)) {
+        return $matches[1];
     }
 
-    public function test_published_migrations_can_be_run()
-    {
-        // Publish migrations
-        Artisan::call('vendor:publish', [
-            '--tag' => 'scorecard-scanner-migrations',
-            '--force' => true,
-        ]);
+    return $filename;
+}
 
-        // Run migrations (this will test that they are syntactically correct)
-        $exitCode = Artisan::call('migrate', ['--pretend' => true]);
+function cleanupPublishedMigrations(): void
+{
+    $publishedPath = database_path('migrations');
 
-        $this->assertEquals(0, $exitCode, 'Published migrations should be valid and runnable');
-    }
-
-    public function test_migration_publishing_preserves_table_names()
-    {
-        // Publish migrations
-        Artisan::call('vendor:publish', [
-            '--tag' => 'scorecard-scanner-migrations',
-            '--force' => true,
-        ]);
-
-        $publishedPath = database_path('migrations');
-        $publishedFiles = File::files($publishedPath);
-
-        $expectedTables = [
-            'golf_courses',
-            'golf_holes',
-            'scorecard_scans',
-            'scorecard_players',
-            'player_scores',
-        ];
-
-        foreach ($expectedTables as $expectedTable) {
-            $found = false;
-            foreach ($publishedFiles as $file) {
-                $content = File::get($file->getPathname());
-                if (str_contains($content, "create('{$expectedTable}'")) {
-                    $found = true;
-                    break;
-                }
-            }
-            $this->assertTrue($found, "Published migrations should preserve table name '{$expectedTable}'");
-        }
-    }
-
-    public function test_force_publish_overwrites_existing_migrations()
-    {
-        // Publish migrations first time
-        Artisan::call('vendor:publish', [
-            '--tag' => 'scorecard-scanner-migrations',
-        ]);
-
-        $publishedPath = database_path('migrations');
-        $firstPublishFiles = File::files($publishedPath);
-        $firstPublishCount = count($firstPublishFiles);
-
-        // Publish again with force
-        Artisan::call('vendor:publish', [
-            '--tag' => 'scorecard-scanner-migrations',
-            '--force' => true,
-        ]);
-
-        $secondPublishFiles = File::files($publishedPath);
-        $secondPublishCount = count($secondPublishFiles);
-
-        // Should have same number of files (overwritten, not duplicated)
-        $this->assertEquals($firstPublishCount, $secondPublishCount);
-    }
-
-    private function extractMigrationName(string $filename): string
-    {
-        // Extract migration name from filename (e.g., "create_golf_courses_table" from "2024_01_01_000000_create_golf_courses_table.php")
-        if (preg_match('/^\d{4}_\d{2}_\d{2}_\d{6}_(.+)\.php$/', $filename, $matches)) {
-            return $matches[1];
-        }
-
-        return $filename;
-    }
-
-    private function cleanupPublishedMigrations(): void
-    {
-        $publishedPath = database_path('migrations');
-
-        if (File::exists($publishedPath)) {
-            $files = File::files($publishedPath);
-            foreach ($files as $file) {
-                // Only delete files that look like our package migrations
-                if (str_contains($file->getFilename(), 'golf_') ||
-                    str_contains($file->getFilename(), 'scorecard_') ||
-                    str_contains($file->getFilename(), 'player_scores')) {
-                    File::delete($file->getPathname());
-                }
+    if (File::exists($publishedPath)) {
+        $files = File::files($publishedPath);
+        foreach ($files as $file) {
+            // Only delete files that look like our package migrations
+            if (str_contains($file->getFilename(), 'golf_') ||
+                str_contains($file->getFilename(), 'scorecard_') ||
+                str_contains($file->getFilename(), 'player_scores')) {
+                File::delete($file->getPathname());
             }
         }
     }

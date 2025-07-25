@@ -2,8 +2,6 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit;
-
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use ScorecardScanner\Models\ScorecardScan;
@@ -12,65 +10,55 @@ use ScorecardScanner\Providers\ScorecardScannerServiceProvider;
 use ScorecardScanner\Services\ImageProcessingService;
 use ScorecardScanner\Services\OcrService;
 use ScorecardScanner\Services\ScorecardProcessingService;
-use Tests\TestCase;
 
-class ServiceProviderTest extends TestCase
-{
-    public function test_service_provider_can_be_instantiated()
-    {
-        $provider = new ScorecardScannerServiceProvider($this->app);
-        $this->assertInstanceOf(ScorecardScannerServiceProvider::class, $provider);
-    }
+uses(Tests\TestCase::class);
 
-    public function test_service_provider_registers_services()
-    {
-        $this->assertTrue($this->app->bound(ScorecardProcessingService::class));
-        $this->assertTrue($this->app->bound(ImageProcessingService::class));
-        $this->assertTrue($this->app->bound(OcrService::class));
-    }
+it('can instantiate the service provider', function () {
+    $provider = new ScorecardScannerServiceProvider($this->app);
+    expect($provider)->toBeInstanceOf(ScorecardScannerServiceProvider::class);
+});
 
-    public function test_service_provider_can_resolve_services()
-    {
-        $processingService = $this->app->make(ScorecardProcessingService::class);
-        $this->assertInstanceOf(ScorecardProcessingService::class, $processingService);
+it('registers core services in the container', function () {
+    expect($this->app->bound(ScorecardProcessingService::class))->toBeTrue();
+    expect($this->app->bound(ImageProcessingService::class))->toBeTrue();
+    expect($this->app->bound(OcrService::class))->toBeTrue();
+});
 
-        $imageService = $this->app->make(ImageProcessingService::class);
-        $this->assertInstanceOf(ImageProcessingService::class, $imageService);
+it('can resolve services from the container', function () {
+    $processingService = $this->app->make(ScorecardProcessingService::class);
+    expect($processingService)->toBeInstanceOf(ScorecardProcessingService::class);
 
-        $ocrService = $this->app->make(OcrService::class);
-        $this->assertInstanceOf(OcrService::class, $ocrService);
-    }
+    $imageService = $this->app->make(ImageProcessingService::class);
+    expect($imageService)->toBeInstanceOf(ImageProcessingService::class);
 
-    public function test_service_provider_registers_policies()
-    {
-        $policy = Gate::getPolicyFor(ScorecardScan::class);
-        $this->assertInstanceOf(ScorecardScanPolicy::class, $policy);
-    }
+    $ocrService = $this->app->make(OcrService::class);
+    expect($ocrService)->toBeInstanceOf(OcrService::class);
+});
 
-    public function test_service_provider_registers_routes()
-    {
-        $routes = Route::getRoutes();
+it('registers authorization policies', function () {
+    $policy = Gate::getPolicyFor(ScorecardScan::class);
+    expect($policy)->toBeInstanceOf(ScorecardScanPolicy::class);
+});
 
-        // Check that scorecard-scans routes are registered
-        $this->assertTrue($routes->hasNamedRoute('scorecard-scans.index'));
-        $this->assertTrue($routes->hasNamedRoute('scorecard-scans.store'));
-        $this->assertTrue($routes->hasNamedRoute('scorecard-scans.show'));
-        $this->assertTrue($routes->hasNamedRoute('scorecard-scans.destroy'));
-    }
+it('registers API routes', function () {
+    $routes = Route::getRoutes();
 
-    public function test_service_provider_routes_use_correct_controller()
-    {
-        $route = Route::getRoutes()->getByName('scorecard-scans.store');
-        $action = $route->getAction();
+    expect($routes->hasNamedRoute('scorecard-scans.index'))->toBeTrue();
+    expect($routes->hasNamedRoute('scorecard-scans.store'))->toBeTrue();
+    expect($routes->hasNamedRoute('scorecard-scans.show'))->toBeTrue();
+    expect($routes->hasNamedRoute('scorecard-scans.destroy'))->toBeTrue();
+});
 
-        $this->assertStringContainsString('ScorecardScanController', $action['controller']);
-    }
+it('configures routes with correct controller', function () {
+    $route = Route::getRoutes()->getByName('scorecard-scans.store');
+    $action = $route->getAction();
 
-    public function test_service_provider_routes_have_correct_middleware()
-    {
-        $route = Route::getRoutes()->getByName('scorecard-scans.store');
-        $middleware = $route->middleware();
+    expect($action['controller'])->toContain('ScorecardScanController');
+});
 
-        $this->assertContains('auth:sanctum', $middleware);
-    }
-}
+it('applies authentication middleware to routes', function () {
+    $route = Route::getRoutes()->getByName('scorecard-scans.store');
+    $middleware = $route->middleware();
+
+    expect($middleware)->toContain('auth:sanctum');
+});
