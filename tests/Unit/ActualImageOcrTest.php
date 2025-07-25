@@ -14,7 +14,7 @@ $imageService = null;
 beforeEach(function () use (&$ocrService, &$imageService) {
     $ocrService = app(OcrService::class);
     $imageService = app(ImageProcessingService::class);
-    
+
     $this->ocrService = $ocrService;
     $this->imageService = $imageService;
 
