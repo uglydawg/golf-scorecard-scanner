@@ -6,7 +6,6 @@ namespace ScorecardScanner\Http\Controllers\Api;
 
 use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\Response;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
@@ -15,6 +14,7 @@ use ScorecardScanner\Http\Requests\StoreScorecardScanRequest;
 use ScorecardScanner\Http\Resources\ScorecardScanResource;
 use ScorecardScanner\Models\ScorecardScan;
 use ScorecardScanner\Services\ScorecardProcessingService;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class ScorecardScanController extends Controller
 {
@@ -45,13 +45,13 @@ class ScorecardScanController extends Controller
             return response()->json([
                 'message' => 'Scorecard uploaded and processing started',
                 'data' => new ScorecardScanResource($scan),
-            ], Response::HTTP_CREATED);
+            ], HttpResponse::HTTP_CREATED);
 
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Failed to process scorecard image',
                 'error' => $e->getMessage(),
-            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+            ], HttpResponse::HTTP_UNPROCESSABLE_ENTITY);
         }
     }
 
